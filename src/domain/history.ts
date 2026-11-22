@@ -88,3 +88,13 @@ export function undoChange(w: Workspace, audit: Audit): Workspace {
   }
   return workspaceSchema.parse(next);
 }
+
+export function mergeAudit(current: Audit[], incoming: Audit[]): Audit[] {
+  const ids = new Set(current.map((a) => a.id));
+  const extra = incoming.filter((a) => {
+    if (ids.has(a.id)) return false;
+    ids.add(a.id);
+    return true;
+  });
+  return [...current, ...extra];
+}

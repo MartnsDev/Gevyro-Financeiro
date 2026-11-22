@@ -6,7 +6,7 @@
 - [x] Caixa, consumo, aportes, transferências e patrimônio separados; fatura sem duplicar compra.
 - [x] Histórico antes/depois, desfazer seguro e correções por estornos vinculados.
 - [x] Datas, centavos, duplicidade, revisão otimista e invariantes financeiros validados.
-- [x] 131 testes automatizados; verificações de código, custo, segredos e compilação.
+- [x] 132 testes automatizados; verificações de código, custo, segredos e compilação.
 - [x] RLS/transações/Google testados em PostgreSQL descartável; regressão MCell isolada.
 - [x] Migração incremental aplicada no Supabase autorizado, sem backfill de registros reais.
 - [x] Verificação real de RLS/permissões: 14 tabelas protegidas, acesso anônimo negado, validador privado.

@@ -1,6 +1,6 @@
 # Verificação funcional — 22/11/2026
 
-A atualização de controle financeiro individual passou em **131 testes automatizados, distribuídos em 23 arquivos**. Os formulários novos têm testes de DOM; não são uma homologação visual em navegador/dispositivos reais.
+A atualização de controle financeiro individual passou em **132 testes automatizados, distribuídos em 23 arquivos**. Os formulários novos têm testes de DOM; não são uma homologação visual em navegador/dispositivos reais.
 
 ## Cálculos e interface
 

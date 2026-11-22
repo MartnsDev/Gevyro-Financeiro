@@ -19,7 +19,7 @@ import {
   reverseInvestment,
   type InvestmentInput,
 } from '../src/domain/investments';
-import { recordChanges, undoChange } from '../src/domain/history';
+import { mergeAudit, recordChanges, undoChange } from '../src/domain/history';
 import { workspaceSchema } from '../src/domain/validation';
 import { reportRows } from '../src/domain/reports';
 function setup(): Workspace {
@@ -395,4 +395,16 @@ it('estorno de reserva e ajuste recompõe saldo e dinheiro livre', () => {
   });
   w = reverseFinancialEvent(w, 'adjust', 'undo-adjust', '2024-01-02');
   expect(totalBalance(w)).toBe(100000);
+});
+
+it('restauração preserva prefixo auditado e acrescenta histórico exclusivo do backup', () => {
+  const current = [{ id: 'old', at: '2024-01-01T12:00:00.000Z', action: 'Original' }];
+  const incoming = [
+    { ...current[0], action: 'Diferente no backup' },
+    { id: 'imported', at: '2023-12-01T12:00:00.000Z', action: 'Registro antigo' },
+  ];
+  const result = mergeAudit(current, incoming);
+  expect(result).toEqual([current[0], incoming[1]]);
+  expect(mergeAudit(result, incoming)).toEqual(result);
+  expect(current).toHaveLength(1);
 });

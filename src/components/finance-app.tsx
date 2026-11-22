@@ -89,7 +89,7 @@ import {
 import { InvestmentPanel } from './investment-panel';
 import { OccurrenceControl, PurchaseDialog } from './installment-control';
 import { RecordHistory } from './record-history';
-import { recordChanges, undoChange } from '@/domain/history';
+import { mergeAudit, recordChanges, undoChange } from '@/domain/history';
 import { financialOverview } from '@/domain/overview';
 import { workspaceSchema } from '@/domain/validation';
 import { loadWorkspace, saveWorkspace } from '@/lib/storage';
@@ -438,7 +438,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
       const updated = persistNotifications({
         ...next,
         audit: [
-          ...w.audit,
+          ...mergeAudit(w.audit, next.audit),
           {
             id: uid(),
             at: new Date().toISOString(),
