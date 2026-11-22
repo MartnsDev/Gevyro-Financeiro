@@ -19,7 +19,7 @@ O código público não contém credenciais administrativas. Configure no ambien
 
 As variáveis públicas entram no bundle por definição. Não são um cofre. O aplicativo nunca precisa de service role, senha PostgreSQL ou Google Client Secret no build ou no navegador.
 
-A trava `deploymentVerified: false` em `src/lib/shared-supabase.ts` permanece até a verificação real. Somente alterar env não ativa a nuvem. Registrar a verificação em código e refazer build/deploy é uma etapa posterior à homologação. O modo local segue utilizável enquanto isso.
+A trava `deploymentVerified: false` em `src/lib/shared-supabase.ts` permanece até a verificação real. Somente alterar env não ativa a nuvem. Registrar a verificação em código e refazer build/deploy é uma etapa posterior à homologação. Enquanto a nuvem estiver desabilitada, o acesso financeiro fica bloqueado. Não há modo financeiro local.
 
 ## Supabase compartilhado
 
@@ -49,3 +49,7 @@ RLS protege dados de outros usuários e acessos anônimos; não retira privilég
 ## Referências oficiais
 
 [Google no Supabase](https://supabase.com/docs/guides/auth/social-sign-in/auth-google), [PKCE](https://supabase.com/docs/guides/auth/sessions/pkce-flow), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [redirects](https://supabase.com/docs/guides/auth/redirect-urls) e [configuração Vercel](https://vercel.com/docs/project-configuration).
+
+## Persistência exclusiva por conta
+
+A nova edição exige Google, remove o fallback IndexedDB e atualiza os dados a cada 30 segundos com a tela visível e ao retomar conexão/janela. A sessão pode persistir pelo SDK, mas registros financeiros não são armazenados no dispositivo. Recuperação do histórico anterior é somente explícita; exclusão ocorre apenas após conferência na nuvem. Nenhuma migração local pode substituir um espaço remoto existente.

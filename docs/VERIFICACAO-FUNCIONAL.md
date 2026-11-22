@@ -1,3 +1,9 @@
+# Persistência exclusiva no Supabase
+
+A nova edição remove o modo financeiro local. Login Google é obrigatório; dados são lidos e gravados via RPC com usuário/revisão verificados. Há atualização automática a cada 30 segundos e ao retomar a tela, sem fila offline. A ativação do projeto real permanece bloqueada por permissão administrativa e configuração Google/migrations ausentes.
+
+As referências a modo local abaixo descrevem a rodada histórica anterior; não são o comportamento atual. Veja [CUSTOS-E-BACKUP.md](CUSTOS-E-BACKUP.md) e [PUBLICACAO.md](PUBLICACAO.md).
+
 # Verificação funcional — 22/11/2026
 
 Escopo desta rodada: concluir e verificar os fluxos financeiros essenciais disponíveis no modo local, preservando os dados existentes e a política de R$ 0,00. Integração remota preparada, sem ativação fictícia.

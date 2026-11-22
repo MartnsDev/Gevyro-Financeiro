@@ -18,7 +18,9 @@ Headers preparados para Vercel restringem enquadramento, MIME sniffing, envio de
 
 O service worker só armazena um ícone; não guarda documentos financeiros, páginas, respostas de API ou tokens. A sessão da SPA é persistida pelo SDK no navegador: código malicioso executado na mesma origem poderia acessá-la. Atualizações, revisão de dependências, proteção da origem e evitar scripts externos são essenciais.
 
-Dados locais pertencem ao perfil do navegador e não têm uma senha própria ou criptografia de aplicação. Pessoas com acesso ao mesmo perfil podem acessá-los. Ocultar valores na interface é privacidade visual, não controle de acesso ao armazenamento.
+Não há persistência financeira local nas novas leituras/gravações. O SDK pode persistir a sessão e o verificador PKCE; dados financeiros ficam na memória enquanto a tela é usada. Ocultar valores é apenas privacidade visual.
+
+A recuperação de versões anteriores lê o banco legado sem criá-lo ou gravar novos registros. A migração exige conta vazia, revisão otimista, conferência do conteúdo relido e verificação de que outra aba não alterou o histórico antes da remoção. Erros preservam a cópia antiga. Backups baixados explicitamente continuam sob responsabilidade do usuário.
 
 ## Verificações
 

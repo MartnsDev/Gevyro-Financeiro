@@ -20,7 +20,7 @@ vi.mock('../src/lib/supabase', () => ({
       getSession: async () => ({ data: { session: { user: google } }, error: null }),
       getUser: async () => ({ data: { user: google }, error: null }),
       onAuthStateChange: (listener: typeof mock.listener) => {
-        mock.listener = listener;
+        mock.listener = (event, session) => listener!(event, session);
         return { data: { subscription: { unsubscribe() {} } } };
       },
     },
@@ -59,10 +59,10 @@ it('uma gravação iniciada antes do logout não recoloca dados da conta anterio
   fireEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }));
   await waitFor(() => expect(mock.save).toHaveBeenCalledOnce());
   act(() => mock.listener!('SIGNED_OUT', null));
-  await screen.findByRole('button', { name: /Espaço local Modo local/ });
+  await screen.findByRole('button', { name: 'Entrar com Google' });
   await act(async () => finish(1));
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   expect(screen.queryByText('Conta privada A')).toBeNull();
   expect(screen.queryByRole('button', { name: /Espaço da conta A/ })).toBeNull();
-  expect(screen.getByRole('button', { name: /Espaço local Modo local/ })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Entrar com Google' })).toBeTruthy();
 });

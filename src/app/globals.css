@@ -3848,3 +3848,54 @@ footer {
 .filter-inline {
   flex-wrap: wrap;
 }
+
+.account-gate {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+  background: var(--background, #f5f8f6);
+}
+.account-card {
+  width: min(100%, 38rem);
+  padding: clamp(1.5rem, 5vw, 3.5rem);
+  border: 1px solid var(--border, #e3e9e5);
+  border-radius: 1.5rem;
+  background: var(--card, #fff);
+  box-shadow: 0 1rem 4rem #102b1910;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.account-card > .gevyro-logo {
+  width: 3.5rem;
+  height: 3.5rem;
+  object-fit: contain;
+}
+.account-card h1 {
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+}
+.account-card p {
+  line-height: 1.65;
+}
+.account-card .eyebrow {
+  color: #00875f;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.account-card details {
+  border-top: 1px solid var(--border, #e3e9e5);
+  padding-top: 1.25rem;
+}
+.account-card summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.account-card small {
+  font-size: 0.85rem;
+  color: #66756e;
+  line-height: 1.5;
+}

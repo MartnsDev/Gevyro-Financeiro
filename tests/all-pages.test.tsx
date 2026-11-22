@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import 'fake-indexeddb/auto';
+import { cloudUserId } from './helpers/cloud';
 import React from 'react';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -87,7 +87,7 @@ it('abre todos os módulos com registros reais de teste e persiste movimento, pa
     },
   ];
   w.budgets = [{ id: 'b', category: 'Assinaturas', amount: 20000, month: today().slice(0, 7) }];
-  await saveWorkspace(w, 0);
+  await saveWorkspace(w, 0, cloudUserId);
   render(<FinanceApp />);
   await waitFor(() =>
     expect(
@@ -123,25 +123,25 @@ it('abre todos os módulos com registros reais de teste e persiste movimento, pa
   });
   fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar movimento' }));
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-  expect((await loadWorkspace()).data.events[0].amount).toBe(12345);
+  expect((await loadWorkspace(cloudUserId)).data.events[0].amount).toBe(12345);
   fireEvent.click(screen.getByRole('button', { name: 'Assinaturas' }));
   fireEvent.click(screen.getByRole('button', { name: 'Pausar' }));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Retomar' })).toBeTruthy());
-  expect((await loadWorkspace()).data.plans[0].pausedFrom).toBe(today());
+  expect((await loadWorkspace(cloudUserId)).data.plans[0].pausedFrom).toBe(today());
   fireEvent.click(screen.getByRole('button', { name: 'Retomar' }));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Pausar' })).toBeTruthy());
   fireEvent.click(screen.getByRole('button', { name: 'Notificações' }));
   dialog = screen.getByRole('dialog');
   fireEvent.click(within(dialog).getByRole('button', { name: 'Marcar como lida' }));
   await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Lida' })).toBeTruthy());
-  expect((await loadWorkspace()).data.notifications.some((n) => n.read)).toBe(true);
+  expect((await loadWorkspace(cloudUserId)).data.notifications.some((n) => n.read)).toBe(true);
   fireEvent.click(within(dialog).getByRole('button', { name: 'Fechar' }));
   fireEvent.click(screen.getByRole('button', { name: 'Configurações' }));
   fireEvent.click(screen.getByRole('button', { name: 'Arquivar categoria Assinaturas' }));
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Reativar categoria Assinaturas' })).toBeTruthy(),
   );
-  const archived = await loadWorkspace();
+  const archived = await loadWorkspace(cloudUserId);
   expect(archived.data.preferences.archivedCategories).toContain('Assinaturas');
   expect(archived.data.obligations.some((o) => o.category === 'Assinaturas')).toBe(true);
 }, 20000);

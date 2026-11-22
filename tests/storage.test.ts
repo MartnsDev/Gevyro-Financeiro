@@ -1,45 +1,58 @@
 import 'fake-indexeddb/auto';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { cloudMock, cloudUserId, resetCloud } from './helpers/cloud';
 import { loadWorkspace, saveWorkspace } from '../src/lib/storage';
 import { emptyWorkspace } from '../src/domain/types';
-describe('Persistência local atômica', () => {
-  it('persiste uma gravação e recupera em uma nova leitura', async () => {
-    const initial = await loadWorkspace();
-    expect(initial.revision).toBe(0);
+beforeEach(resetCloud);
+describe('Supabase como fonte única dos dados', () => {
+  it('exige sessão e não abre o banco do navegador', async () => {
+    const open = vi.spyOn(indexedDB, 'open');
+    await expect(loadWorkspace()).rejects.toThrow('Entre');
+    await expect(saveWorkspace(emptyWorkspace(), 0)).rejects.toThrow('Entre');
+    expect(open).not.toHaveBeenCalled();
+    expect(cloudMock.rpc).not.toHaveBeenCalled();
+    open.mockRestore();
+  });
+  it('recupera os mesmos dados e revisão em leituras independentes', async () => {
     const w = emptyWorkspace();
-    w.preferences.name = 'Matheus';
-    const revision = await saveWorkspace(w, 0);
-    expect(revision).toBe(1);
-    const reloaded = await loadWorkspace();
-    expect(reloaded.data.preferences.name).toBe('Matheus');
-    expect(reloaded.revision).toBe(1);
+    w.preferences.name = 'Conta compartilhada';
+    await saveWorkspace(w, 0, cloudUserId);
+    const deviceA = await loadWorkspace(cloudUserId);
+    const deviceB = await loadWorkspace(cloudUserId);
+    expect(deviceA).toEqual(deviceB);
+    expect(deviceB.data.preferences.name).toBe('Conta compartilhada');
+    expect(deviceB.revision).toBe(1);
   });
-  it('rejeita revisão antiga e preserva o dado já gravado', async () => {
-    const stale = emptyWorkspace();
-    stale.preferences.name = 'Sobrescrito';
-    await expect(saveWorkspace(stale, 0)).rejects.toThrow('Outra aba');
-    const reloaded = await loadWorkspace();
-    expect(reloaded.data.preferences.name).toBe('Matheus');
-  });
-  it('erro de validação não grava um estado inválido', async () => {
-    const before = await loadWorkspace();
-    const invalid = structuredClone(before.data);
-    invalid.preferences.payday = 40;
-    await expect(saveWorkspace(invalid, before.revision)).rejects.toThrow();
-    expect((await loadWorkspace()).revision).toBe(before.revision);
-  });
-  it('duas gravações concorrentes permitem apenas um vencedor', async () => {
-    const initial = await loadWorkspace();
-    const one = structuredClone(initial.data);
-    const two = structuredClone(initial.data);
-    one.preferences.name = 'A';
-    two.preferences.name = 'B';
+  it('duas gravações na mesma revisão não sobrescrevem uma à outra', async () => {
+    const a = emptyWorkspace();
+    a.preferences.name = 'Dispositivo A';
+    const b = emptyWorkspace();
+    b.preferences.name = 'Dispositivo B';
     const results = await Promise.allSettled([
-      saveWorkspace(one, initial.revision),
-      saveWorkspace(two, initial.revision),
+      saveWorkspace(a, 0, cloudUserId),
+      saveWorkspace(b, 0, cloudUserId),
     ]);
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
     expect(results.filter((r) => r.status === 'rejected')).toHaveLength(1);
-    expect((await loadWorkspace()).revision).toBe(initial.revision + 1);
+    expect((await loadWorkspace(cloudUserId)).data.preferences.name).toBe('Dispositivo A');
+  });
+  it('não cria cópia nem fila local quando o servidor recusa uma gravação', async () => {
+    const open = vi.spyOn(indexedDB, 'open');
+    cloudMock.rpc.mockResolvedValue({ data: null, error: { message: 'network failure' } });
+    await expect(saveWorkspace(emptyWorkspace(), 0, cloudUserId)).rejects.toThrow('Nenhuma cópia');
+    expect(cloudMock.rows.size).toBe(0);
+    expect(open).not.toHaveBeenCalled();
+    open.mockRestore();
+  });
+  it('não envia documento inválido e não acessa dados de uma sessão diferente', async () => {
+    const invalid = emptyWorkspace();
+    invalid.preferences.payday = 40;
+    await expect(saveWorkspace(invalid, 0, cloudUserId)).rejects.toThrow();
+    await expect(loadWorkspace('outro-usuario')).rejects.toThrow('sessão');
+    expect(cloudMock.rpc).not.toHaveBeenCalled();
+  });
+  it('não anuncia sucesso com resposta sem revisão confirmada', async () => {
+    cloudMock.rpc.mockResolvedValue({ data: null, error: null });
+    await expect(saveWorkspace(emptyWorkspace(), 0, cloudUserId)).rejects.toThrow('confirmada');
   });
 });

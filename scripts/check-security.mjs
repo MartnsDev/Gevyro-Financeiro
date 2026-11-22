@@ -55,3 +55,8 @@ if (existsSync('out')) {
 console.log(
   `PASS: ${repositoryFiles().length} arquivos revisados; nenhum segredo reconhecido. Auth Google/PKCE, headers e cache restrito conferidos. Não substitui auditoria manual ou homologação remota.`,
 );
+
+const storage = readFileSync('src/lib/storage.ts', 'utf8');
+assert.doesNotMatch(storage, /openDB|indexedDB|localStorage|sessionStorage/);
+assert.match(storage, /if \(!userId\)/);
+assert.match(readFileSync('src/components/finance-app.tsx', 'utf8'), /AccountGate/);

@@ -90,7 +90,8 @@ import {
 import { workspaceSchema } from '@/domain/validation';
 import { loadWorkspace, saveWorkspace } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
-import { isGoogleUser, signInWithGoogle } from '@/lib/google-auth';
+import { AccountGate } from './account-gate';
+import { startCloudSync } from '@/lib/cloud-sync';
 import { Button } from './ui/button';
 import { Modal } from './ui/dialog';
 import { EntryEditor } from './entry-form';
@@ -100,7 +101,6 @@ import { GevyroLogo } from './gevyro-logo';
 import { CostSafetyPanel } from './cost-safety-panel';
 import { backupCSV, backupJSON } from '@/lib/backup';
 import { COST_POLICY } from '@/lib/cost-policy';
-import { sharedSupabaseState } from '@/lib/shared-supabase';
 import { copyLocalWorkspaceToCloud } from '@/lib/local-to-cloud';
 import { JournalDialog, JournalHistory } from './journal-dialog';
 import {
@@ -255,17 +255,18 @@ function download(name: string, content: string, type = 'application/json') {
   URL.revokeObjectURL(url);
 }
 
-export default function FinanceApp() {
+function FinanceWorkspace({ accountUser }: { accountUser: User }) {
   const loadAttempt = useRef(0);
   const [w, setW] = useState<Workspace>(emptyWorkspace);
   const [revision, setRevision] = useState(0);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState('');
-  const [user, setUser] = useState<User | null>(null);
+  const user = accountUser;
+  const [syncError, setSyncError] = useState('');
   const [page, setPage] = useState('dashboard');
   const [month, setMonth] = useState(today().slice(0, 7));
-  const [dark, setDark] = useState(false);
+  const dark = w.preferences.theme === 'dark';
   const [hidden, setHidden] = useState(false);
   const [mobile, setMobile] = useState(false);
   const [search, setSearch] = useState('');
@@ -345,6 +346,7 @@ export default function FinanceApp() {
       setRevision(0);
       setReady(false);
       setLoadError('');
+      setSyncError('');
       try {
         const data = await loadWorkspace(userId);
         if (attempt !== loadAttempt.current) return;
@@ -360,64 +362,39 @@ export default function FinanceApp() {
     [resetWorkspaceView],
   );
   useEffect(() => {
-    const saved = localStorage.getItem('gevyro-theme');
-    const isDark = saved === 'dark';
-    setTimeout(() => setDark(isDark), 0);
-    document.documentElement.classList.toggle('dark', isDark);
-    if (supabase) {
-      void supabase.auth.getSession().then(({ data, error }) => {
-        if (error) {
-          setLoadError(error.message);
-          setReady(true);
-          return;
-        }
-        if (!data.session) {
-          setUser(null);
-          void refresh();
-          return;
-        }
-        void supabase!.auth.getUser().then(({ data: verified, error: verificationError }) => {
-          if (verificationError || !isGoogleUser(verified.user)) {
-            ++loadAttempt.current;
-            resetWorkspaceView();
-            setUser(null);
-            setW(emptyWorkspace());
-            setLoadError('Entre com uma conta Google exclusiva para acessar seus dados na nuvem.');
-            setReady(true);
-            setAuthOpen(true);
-            return;
-          }
-          setUser(verified.user);
-          void refresh(verified.user!.id);
-        });
-      });
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'INITIAL_SESSION') return;
-        if (event !== 'TOKEN_REFRESHED') resetWorkspaceView();
-        if (session && !isGoogleUser(session.user)) {
-          ++loadAttempt.current;
-          setUser(null);
-          setW(emptyWorkspace());
-          setLoadError('Use Entrar com Google para acessar o Gevyro.');
-          setReady(true);
-          setAuthOpen(true);
-          return;
-        }
-        setUser(session?.user ?? null);
-        if (event !== 'TOKEN_REFRESHED') {
-          ++loadAttempt.current;
-          setW(emptyWorkspace());
-          setReady(false);
-          setTimeout(() => void refresh(session?.user.id), 0);
-        }
-      });
-      return () => subscription.unsubscribe();
-    }
-    const timeout = setTimeout(() => void refresh(), 0);
-    return () => clearTimeout(timeout);
-  }, [refresh, resetWorkspaceView]);
+    const attempt = loadAttempt;
+    const task = window.setTimeout(() => void refresh(user.id), 0);
+    return () => {
+      window.clearTimeout(task);
+      ++attempt.current;
+    };
+  }, [refresh, user.id]);
+  const editingCloudData =
+    entryOpen ||
+    !!resource ||
+    journalOpen ||
+    !!payment ||
+    !!invoice ||
+    onboarding ||
+    !!confirm ||
+    importRows.length > 0;
+  useEffect(() => {
+    if (!ready || loadError || editingCloudData) return;
+    return startCloudSync({
+      userId: user.id,
+      revision,
+      canApply: () => !lock.current,
+      onData: (stored) => {
+        setW(stored.data);
+        setRevision(stored.revision);
+      },
+      onError: setSyncError,
+    });
+  }, [user.id, revision, ready, loadError, editingCloudData]);
+  useEffect(() => {
+    const enabled = w.preferences.theme === 'dark';
+    document.documentElement.classList.toggle('dark', enabled);
+  }, [w.preferences.theme]);
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -2664,9 +2641,8 @@ export default function FinanceApp() {
                 </div>
                 <div className="notice">
                   <LockKeyhole size={18} />
-                  {user
-                    ? 'Seus dados pertencem à sua conta Supabase.'
-                    : 'Modo local: dados apenas neste navegador. Faça backups regularmente.'}
+                  Seus registros ficam somente na sua conta Supabase, compartilhados entre seus
+                  dispositivos.
                 </div>
                 <Button variant="outline" className="full" onClick={() => setAuthOpen(true)}>
                   {user ? 'Gerenciar sessão' : 'Acessar conta na nuvem'}
@@ -2752,7 +2728,7 @@ export default function FinanceApp() {
                 ],
                 [
                   'Persistência e segurança',
-                  'Modo local salva neste navegador. Conexões externas estão bloqueadas pela política de orçamento adicional zero. Nunca compartilhe um perfil de navegador com dados financeiros pessoais.',
+                  'Seus registros financeiros ficam no Supabase e exigem login. Use a mesma conta Google em todos os dispositivos. Sem conexão, gravações são recusadas e não há cópia financeira local.',
                 ],
               ].map(([title, description]) => (
                 <article key={title}>
@@ -2771,10 +2747,10 @@ export default function FinanceApp() {
     }
   }
   function toggleTheme() {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle('dark', next);
-    localStorage.setItem('gevyro-theme', next ? 'dark' : 'light');
+    void commit(
+      { ...w, preferences: { ...w.preferences, theme: dark ? 'light' : 'dark' } },
+      'Tema atualizado',
+    ).catch(() => {});
   }
   function exportFullBackup(format: 'json' | 'csv') {
     try {
@@ -3080,7 +3056,7 @@ export default function FinanceApp() {
             </span>
             <span>
               <strong>{w.preferences.name || 'Meu espaço'}</strong>
-              <small>{user ? 'Conta sincronizada' : 'Modo local · neste dispositivo'}</small>
+              <small>{'Conta sincronizada'}</small>
             </span>
             <Ellipsis size={17} />
           </button>
@@ -3198,6 +3174,11 @@ export default function FinanceApp() {
               </Button>
             </div>
           </div>
+          {syncError && (
+            <div className="notice" role="status">
+              {syncError}
+            </div>
+          )}
           {!ready ? (
             <div className="loading-state">
               <LoaderCircle className="spin" size={27} />
@@ -3239,7 +3220,9 @@ export default function FinanceApp() {
               ) : (
                 <>
                   <ShieldCheck size={13} />{' '}
-                  {user ? 'Dados na sua conta' : 'Armazenamento local neste navegador'}
+                  {syncError
+                    ? 'Atualização pendente'
+                    : 'Dados na sua conta · atualização a cada 30 s'}
                 </>
               )}
             </span>
@@ -3631,96 +3614,59 @@ export default function FinanceApp() {
         title={user ? 'Sua conta' : 'Bem-vindo ao Gevyro'}
         description="Seu dinheiro merece um espaço seguro."
       >
-        {!supabase ? (
-          <div className="stack">
-            <div className="notice">
-              <LockKeyhole size={20} />
-              <span>
-                {sharedSupabaseState() === 'pending'
-                  ? 'O Supabase do MCell foi selecionado. A ativação depende da validação do projeto e da criação do espaço exclusivo do Gevyro. Seus dados continuam neste navegador.'
-                  : 'Conexões externas estão bloqueadas pela política de orçamento adicional de R$ 0,00. O aplicativo salva os dados neste navegador.'}
-              </span>
-            </div>
-            <p className="muted">
-              Você pode usar os controles financeiros locais e exportar backups completos. Nenhum
-              provedor será ativado automaticamente. Consulte Proteção de custos e dados nas
-              preferências.
-            </p>
-            <Button onClick={() => setAuthOpen(false)}>Continuar no modo local</Button>
+        <div className="stack">
+          <p>{user.email}</p>
+          <div className="notice">
+            <ShieldCheck size={20} /> Sua sessão usa Supabase Auth. Seus registros ficam na conta e
+            são acessíveis nos seus dispositivos.
           </div>
-        ) : user ? (
-          <div className="stack">
-            <p>{user.email}</p>
-            <div className="notice">
-              <ShieldCheck size={20} /> Sua sessão usa Supabase Auth. Dados locais e dados da conta
-              são espaços separados.
-            </div>
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() =>
-                setConfirm({
-                  title: 'Copiar os dados locais para sua conta?',
-                  description:
-                    'Exporte primeiro um backup completo. A cópia só será aceita em uma conta sem espaço na nuvem. Os dados deste navegador serão mantidos e nenhum histórico existente será mesclado ou substituído.',
-                  run: async () => {
-                    setBusy(true);
-                    try {
-                      await copyLocalWorkspaceToCloud(user.id);
-                      setConfirm(null);
-                      setAuthOpen(false);
-                      await refresh(user.id);
-                      toast.success('Dados copiados para a nuvem; original local preservado.');
-                    } catch (e) {
-                      toast.error(
-                        e instanceof Error
-                          ? e.message
-                          : 'A cópia não foi concluída. Os dados locais foram preservados.',
-                      );
-                    } finally {
-                      setBusy(false);
-                    }
-                  },
-                })
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={() =>
+              setConfirm({
+                title: 'Migrar o histórico anterior para sua conta?',
+                description:
+                  'Exporte um backup antes de continuar. A migração exige uma conta vazia. O histórico antigo só será removido deste navegador depois de gravar e conferir a cópia no Supabase.',
+                run: async () => {
+                  setBusy(true);
+                  try {
+                    await copyLocalWorkspaceToCloud(user.id);
+                    setConfirm(null);
+                    setAuthOpen(false);
+                    await refresh(user.id);
+                    toast.success(
+                      'Histórico migrado e conferido no Supabase; cópia antiga removida deste navegador.',
+                    );
+                  } catch (e) {
+                    toast.error(
+                      e instanceof Error
+                        ? e.message
+                        : 'A cópia não foi concluída. Os dados locais foram preservados.',
+                    );
+                  } finally {
+                    setBusy(false);
+                  }
+                },
+              })
+            }
+          >
+            Migrar histórico da versão anterior
+          </Button>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              const { error } = await supabase!.auth.signOut();
+              if (error) toast.error(error.message);
+              else {
+                setAuthOpen(false);
+                toast.success('Sessão encerrada');
               }
-            >
-              Copiar dados locais para esta conta
-            </Button>
-            <Button
-              variant="outline"
-              onClick={async () => {
-                const { error } = await supabase!.auth.signOut();
-                if (error) toast.error(error.message);
-                else {
-                  setAuthOpen(false);
-                  toast.success('Sessão encerrada');
-                }
-              }}
-            >
-              <LogOut size={16} /> Encerrar sessão
-            </Button>
-          </div>
-        ) : (
-          <div className="stack">
-            <p>Entre com sua conta Google para acessar seu espaço financeiro pessoal.</p>
-            <Button
-              disabled={busy}
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  await signInWithGoogle(supabase!, window.location.origin);
-                } catch (error) {
-                  toast.error(error instanceof Error ? error.message : 'Não foi possível entrar.');
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              <ShieldCheck size={18} /> {busy ? 'Conectando…' : 'Entrar com Google'}
-            </Button>
-            <p className="muted">O Gevyro não solicita nem armazena sua senha do Google.</p>
-          </div>
-        )}
+            }}
+          >
+            <LogOut size={16} /> Encerrar sessão
+          </Button>
+        </div>
       </Modal>
       <Modal
         open={onboarding}
@@ -4018,5 +3964,11 @@ export default function FinanceApp() {
         </div>
       </Modal>
     </div>
+  );
+}
+
+export default function FinanceApp() {
+  return (
+    <AccountGate>{(user) => <FinanceWorkspace key={user.id} accountUser={user} />}</AccountGate>
   );
 }

@@ -1,3 +1,18 @@
+# Atualização: dados somente no Supabase
+
+- Login Google obrigatório; sem acesso financeiro anônimo ou modo local.
+- Leitura/gravação via RPC, validação da sessão e revisão otimista entre dispositivos.
+- Atualização automática a cada 30 segundos em primeiro plano e ao retomar conexão/janela, pausada durante formulários.
+- Recuperação somente de leitura do histórico antigo; remoção após migração conferida na nuvem.
+- Nenhuma fila offline, novo registro IndexedDB ou preferência financeira em localStorage.
+- A sessão Auth pode persistir pelo SDK; dados financeiros só ficam na memória durante o uso.
+
+A Vercel foi autorizada e o projeto correto está vinculado ao GitHub. A ativação do Supabase real continua bloqueada: o projeto MCell recusa acesso administrativo, os RPCs Gevyro estão ausentes e Google está desativado. A edição somente nuvem bloqueia a tela financeira até concluir isso; testes locais não homologam o projeto real.
+
+Validação desta edição: 108 testes em 21 arquivos aprovados, além de lint, tipos, formatação, scanner, build e SQL em PostgreSQL descartável. Testes de RPC usam backend simulado; a integração real de duas contas/dispositivos continua não homologada por falta de acesso ao projeto.
+
+## Registro anterior
+
 # Checklist de entrega — 22/11/2026
 
 ## Preparado e validado localmente
@@ -21,7 +36,7 @@ A execução local final aprovou 97 testes, incluindo gravação em andamento du
 ## Homologação externa pendente
 
 - [x] Envio completo confirmado em `https://github.com/MartnsDev/Gevyro-Financeiro` (commit inicial `9fb8364eabdb6a35300b5d00e5c0ac1268a3cb4a`).
-- [ ] Deploy Vercel real concluído, URL e projeto confirmados, integração GitHub exata.
+- [x] Deploy Vercel confirmado em https://gevyro-financeiro.vercel.app com integração `MartnsDev/Gevyro-Financeiro`.
 - [ ] Acesso administrativo Supabase conectado, plano conferido e três migrations instaladas no projeto real.
 - [ ] Google OAuth habilitado no provedor com Client ID/Secret privados e redirects exatos.
 - [ ] Homologação real com duas contas Google, RLS/API, sessão, refresh, logout e preservação MCell.
@@ -35,4 +50,4 @@ A exportação estática usa scripts inline no bootstrap Next.js e a CSP permite
 
 As limitações funcionais avançadas continuam descritas em [VERIFICACAO-FUNCIONAL.md](VERIFICACAO-FUNCIONAL.md). Nenhuma certificação de segurança, sincronização bancária, cotação automática ou garantia de retorno financeiro é declarada.
 
-A sessão local da Vercel respondeu HTTP 403. A revisão automática bloqueou uma consulta adicional à credencial; esse caminho foi encerrado. É necessária uma conexão Vercel válida. A integração Supabase também continua sem conexão administrativa, portanto não houve ativação remota nem alteração de dados MCell.
+A sessão local da Vercel respondeu HTTP 403. A revisão automática bloqueou uma consulta adicional à credencial; esse caminho foi encerrado. Uma nova autorização oficial Vercel foi concluída e o deploy posteriormente funcionou. A integração Supabase também continua sem conexão administrativa, portanto não houve ativação remota nem alteração de dados MCell.

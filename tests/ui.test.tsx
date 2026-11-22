@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import 'fake-indexeddb/auto';
+import { cloudUserId } from './helpers/cloud';
 import React from 'react';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -35,7 +35,7 @@ it('cadastra conta, registra despesa paga e preserva o saldo após remontar', as
   });
   fireEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }));
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-  expect((await loadWorkspace()).data.accounts[0].opening).toBe(100000);
+  expect((await loadWorkspace(cloudUserId)).data.accounts[0].opening).toBe(100000);
   fireEvent.click(screen.getByRole('button', { name: 'Visão geral' }));
   fireEvent.click(screen.getByRole('button', { name: 'Nova movimentação' }));
   dialog = screen.getByRole('dialog');
@@ -46,7 +46,7 @@ it('cadastra conta, registra despesa paga e preserva o saldo após remontar', as
   fireEvent.click(within(dialog).getByLabelText(/Pago hoje/));
   fireEvent.click(within(dialog).getByRole('button', { name: 'Adicionar movimentação' }));
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-  const saved = await loadWorkspace();
+  const saved = await loadWorkspace(cloudUserId);
   expect(saved.data.obligations[0].amount).toBe(18050);
   expect(saved.data.payments).toHaveLength(1);
   view.unmount();
@@ -57,7 +57,7 @@ it('cadastra conta, registra despesa paga e preserva o saldo após remontar', as
     ),
   );
   fireEvent.click(screen.getByRole('button', { name: 'Usar tema escuro' }));
-  expect(document.documentElement.classList.contains('dark')).toBe(true);
+  await waitFor(() => expect(document.documentElement.classList.contains('dark')).toBe(true));
   fireEvent.click(screen.getByRole('button', { name: 'Ocultar valores' }));
   expect(screen.getByRole('button', { name: /Saldo disponível/ }).textContent).toContain('•••••');
 });

@@ -34,20 +34,16 @@ describe('Proteção de orçamento zero', () => {
       assertWorkspaceWithinLimit({ text: 'a'.repeat(COST_POLICY.maxWorkspaceBytes) }),
     ).toThrow('preservados');
   });
-  it('preserva histórico e revisão quando o limite é ultrapassado', async () => {
+  it('interrompe gravações excessivas sem modificar o documento', async () => {
     const w = emptyWorkspace();
-    w.preferences.name = 'Histórico preservado';
-    await saveWorkspace(w, 0);
+    const before = JSON.stringify(w);
     const oversized = { ...w, extra: 'a'.repeat(COST_POLICY.maxWorkspaceBytes) };
-    await expect(saveWorkspace(oversized, 1)).rejects.toThrow('12 MiB');
-    const loaded = await loadWorkspace();
-    expect(loaded.revision).toBe(1);
-    expect(loaded.data.preferences.name).toBe('Histórico preservado');
+    await expect(saveWorkspace(oversized, 0, 'remote-user')).rejects.toThrow('12 MiB');
+    expect(JSON.stringify(w)).toBe(before);
   });
-  it('não usa IndexedDB como substituto silencioso de uma operação remota bloqueada', async () => {
-    const initial = await loadWorkspace();
+  it('não oferece substituto local quando a nuvem está bloqueada', async () => {
     await expect(saveWorkspace(emptyWorkspace(), 0, 'remote-user')).rejects.toThrow('bloqueadas');
     await expect(loadWorkspace('remote-user')).rejects.toThrow('bloqueadas');
-    expect((await loadWorkspace()).revision).toBe(initial.revision);
+    await expect(loadWorkspace()).rejects.toThrow('Entre');
   });
 });

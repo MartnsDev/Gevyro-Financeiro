@@ -120,6 +120,7 @@ export interface Preferences {
   estimatedIncome: number;
   reminderDays: number;
   onboarding: boolean;
+  theme?: 'light' | 'dark';
 }
 export interface Workspace {
   schema: 1;

@@ -15,7 +15,7 @@ export function jsonBytes(data: unknown): number {
 export function assertWorkspaceWithinLimit(data: unknown): void {
   if (jsonBytes(data) > COST_POLICY.maxWorkspaceBytes) {
     throw new Error(
-      'O espaço atingiu o limite de segurança local de 12 MiB. A operação não foi gravada e os dados existentes foram preservados. Exporte um backup completo antes de continuar. Nenhum serviço adicional será ativado.',
+      'O espaço atingiu o limite de segurança de 12 MiB. A operação não foi gravada e os dados existentes foram preservados. Exporte um backup completo antes de continuar. Nenhum serviço adicional será ativado.',
     );
   }
 }
@@ -25,7 +25,7 @@ export function assertRemoteAllowed(url?: string): void {
     !isAuthorizedSharedSupabase(url, process.env.NEXT_PUBLIC_SUPABASE_SHARED_PROJECT_ENABLED)
   )
     throw new Error(
-      'Conexões externas bloqueadas pela política de orçamento adicional de R$ 0,00. Seus dados locais foram preservados.',
+      'Conexões externas bloqueadas até concluir a configuração autorizada do Supabase. Nenhuma cópia financeira é salva no dispositivo.',
     );
 }
 export function formatBytes(bytes: number): string {

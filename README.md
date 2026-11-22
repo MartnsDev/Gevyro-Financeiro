@@ -52,15 +52,19 @@ A identidade esmeralda da Gevyro encontra uma interface limpa, com navegação l
 
 ## Seus dados merecem cuidado
 
-O modo local guarda os registros neste navegador. Exportar backups periodicamente ajuda a manter uma cópia independente, especialmente antes de trocar de dispositivo ou limpar os dados do navegador.
+O Gevyro foi adaptado para manter os registros financeiros **somente no Supabase**, com acesso obrigatório pela mesma conta Google em todos os dispositivos. Não há modo financeiro local nem fila de gravações offline.
 
-O acesso à nuvem foi preparado para **entrar com Google**, sem pedir sua senha no Gevyro. As migrations incluem isolamento por usuário e verificações de acesso no banco. A ativação real depende da configuração e da homologação do Supabase; a existência do código não significa que a nuvem já está ativa.
+A interface busca novas informações automaticamente a cada 30 segundos enquanto está visível, e ao retomar o aplicativo. Uma gravação só aparece como concluída depois da confirmação do servidor. Conflitos entre dispositivos são recusados para evitar sobrescrever alterações.
 
-Dados locais e dados da conta são separados. A cópia para uma conta vazia é uma ação explícita e preserva o original local. Não existe envio silencioso do seu histórico.
+A sessão de autenticação pode permanecer no navegador para manter o acesso. Os registros financeiros são carregados na memória durante o uso, sem serem guardados em um banco local. Backups JSON/CSV só são baixados quando você solicitar.
+
+**A ativação real da nuvem continua pendente de acesso administrativo ao projeto MCell, instalação das migrations e configuração Google.** Até lá, a tela financeira fica bloqueada; não existe fallback para gravar no navegador.
+
+Se você usava a versão anterior, é possível recuperar um backup do histórico antigo e migrá-lo explicitamente para uma conta vazia. A cópia anterior só é removida depois de conferir a gravação no Supabase.
 
 ## Comece pelo essencial
 
-1. Cadastre uma conta e informe o saldo de referência.
+1. Entre com sua conta Google e cadastre uma conta financeira com saldo de referência.
 2. Adicione suas receitas, despesas e compromissos.
 3. Organize cartões, categorias, orçamentos e metas conforme sua rotina.
 4. Consulte os relatórios e as projeções para decidir os próximos passos.
@@ -70,7 +74,7 @@ O Gevyro é um organizador financeiro pessoal. Cotações, valores patrimoniais 
 
 ## Estado desta edição
 
-Os fluxos locais essenciais estão implementados. A publicação na Vercel e o login Google no projeto real exigem as conexões administrativas e a validação descritas no [checklist de entrega](docs/CHECKLIST-ENTREGA.md). Os limites funcionais estão na [verificação funcional](docs/VERIFICACAO-FUNCIONAL.md).
+Os fluxos financeiros essenciais estão implementados com persistência exclusiva na nuvem, condicionada à ativação do projeto real. A publicação na Vercel e o login Google no projeto real exigem as conexões administrativas e a validação descritas no [checklist de entrega](docs/CHECKLIST-ENTREGA.md). Os limites funcionais estão na [verificação funcional](docs/VERIFICACAO-FUNCIONAL.md).
 
 Não há assinatura comercial ou checkout de venda ativado nesta edição.
 
@@ -82,7 +86,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Acesse `http://localhost:3000`. Sem a nuvem habilitada, o aplicativo funciona no modo local. Para produção, consulte [publicação e login Google](docs/PUBLICACAO.md). Para reportar uma vulnerabilidade, consulte [SECURITY.md](SECURITY.md).
+Acesse `http://localhost:3000`. Sem a nuvem habilitada, o aplicativo mostra a configuração pendente e não permite novos registros. Para produção, consulte [publicação e login Google](docs/PUBLICACAO.md). Para reportar uma vulnerabilidade, consulte [SECURITY.md](SECURITY.md).
 
 ---
 

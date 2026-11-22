@@ -1,17 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { emptyWorkspace } from '../src/domain/types';
-const { load, save } = vi.hoisted(() => ({ load: vi.fn(), save: vi.fn() }));
-vi.mock('../src/lib/storage', () => ({ loadWorkspace: load, saveWorkspace: save }));
+const mocks = vi.hoisted(() => ({ read: vi.fn(), remove: vi.fn(), load: vi.fn(), save: vi.fn() }));
+vi.mock('../src/lib/storage', () => ({ loadWorkspace: mocks.load, saveWorkspace: mocks.save }));
+vi.mock('../src/lib/legacy-storage', async (original) => ({
+  ...(await original<typeof import('../src/lib/legacy-storage')>()),
+  readLegacyWorkspace: mocks.read,
+  removeVerifiedLegacy: mocks.remove,
+}));
 import { copyLocalWorkspaceToCloud } from '../src/lib/local-to-cloud';
-function local() {
+function previous() {
   const w = emptyWorkspace();
   w.accounts = [
     {
       id: 'a',
-      name: 'Conta local',
+      name: 'Histórico anterior',
       institution: '',
       type: 'digital',
-      opening: 100000,
+      opening: 10000,
       openingDate: '2020-01-01',
       color: '#059669',
     },
@@ -19,45 +24,44 @@ function local() {
   return w;
 }
 beforeEach(() => {
-  load.mockReset();
-  save.mockReset();
+  for (const mock of Object.values(mocks)) mock.mockReset();
 });
-describe('Cópia explícita e preservação dos dados locais', () => {
-  it('copia para uma conta nova sem apagar o original', async () => {
-    const source = local();
+describe('Migração verificada do histórico antigo', () => {
+  it('remove a cópia antiga somente após gravar e reler a mesma conta', async () => {
+    const source = previous();
     const before = JSON.stringify(source);
-    load.mockImplementation(async (user?: string) =>
-      user ? { data: emptyWorkspace(), revision: 0 } : { data: source, revision: 3 },
-    );
-    save.mockResolvedValue(1);
+    mocks.read.mockResolvedValue({ data: source, revision: 3 });
+    mocks.load
+      .mockResolvedValueOnce({ data: emptyWorkspace(), revision: 0 })
+      .mockImplementation(async () => ({ data: mocks.save.mock.calls[0][0], revision: 1 }));
+    mocks.save.mockResolvedValue(1);
     await copyLocalWorkspaceToCloud('user');
-    expect(save).toHaveBeenCalledOnce();
-    expect(save.mock.calls[0][0].accounts).toEqual(source.accounts);
-    expect(save.mock.calls[0][1]).toBe(0);
-    expect(save.mock.calls[0][2]).toBe('user');
+    expect(mocks.remove).toHaveBeenCalledWith({ data: source, revision: 3 });
+    expect(mocks.load.mock.calls).toEqual([['user'], ['user']]);
     expect(JSON.stringify(source)).toBe(before);
   });
-  it('recusa sobrescrever um espaço remoto existente', async () => {
-    load.mockImplementation(async () => ({ data: local(), revision: 1 }));
+  it('preserva ambos os históricos quando a conta já tem dados', async () => {
+    mocks.read.mockResolvedValue({ data: previous(), revision: 1 });
+    mocks.load.mockResolvedValue({ data: previous(), revision: 1 });
     await expect(copyLocalWorkspaceToCloud('user')).rejects.toThrow('preservar');
-    expect(save).not.toHaveBeenCalled();
+    expect(mocks.save).not.toHaveBeenCalled();
+    expect(mocks.remove).not.toHaveBeenCalled();
   });
-  it('erro de rede ou conflito não apaga nem altera registros locais', async () => {
-    const source = local();
-    const before = JSON.stringify(source);
-    load.mockImplementation(async (user?: string) =>
-      user ? { data: emptyWorkspace(), revision: 0 } : { data: source, revision: 3 },
-    );
-    save.mockRejectedValue(new Error('revision_conflict'));
-    await expect(copyLocalWorkspaceToCloud('user')).rejects.toThrow('revision_conflict');
-    expect(JSON.stringify(source)).toBe(before);
-    expect(save).toHaveBeenCalledOnce();
+  it('não remove dados quando há erro de rede ou divergência na conferência', async () => {
+    mocks.read.mockResolvedValue({ data: previous(), revision: 1 });
+    mocks.load.mockResolvedValue({ data: emptyWorkspace(), revision: 0 });
+    mocks.save.mockRejectedValueOnce(new Error('network'));
+    await expect(copyLocalWorkspaceToCloud('user')).rejects.toThrow('network');
+    expect(mocks.remove).not.toHaveBeenCalled();
+    mocks.save.mockResolvedValue(1);
+    await expect(copyLocalWorkspaceToCloud('user')).rejects.toThrow('conferir');
+    expect(mocks.remove).not.toHaveBeenCalled();
   });
-  it('exige sessão e não inicia cópias vazias', async () => {
+  it('exige conta e histórico anterior sem criar base local nova', async () => {
     await expect(copyLocalWorkspaceToCloud('')).rejects.toThrow('Entre');
-    expect(load).not.toHaveBeenCalled();
-    load.mockResolvedValue({ data: emptyWorkspace(), revision: 0 });
+    expect(mocks.read).not.toHaveBeenCalled();
+    mocks.read.mockResolvedValue(null);
     await expect(copyLocalWorkspaceToCloud('user')).rejects.toThrow('Não há');
-    expect(save).not.toHaveBeenCalled();
+    expect(mocks.save).not.toHaveBeenCalled();
   });
 });

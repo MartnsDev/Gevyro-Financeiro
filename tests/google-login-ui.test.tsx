@@ -21,13 +21,9 @@ import FinanceApp from '../src/components/finance-app';
 afterEach(cleanup);
 it('oferece somente Google no modal e inicia OAuth sem pedir senha', async () => {
   render(<FinanceApp />);
-  await waitFor(() =>
-    expect(
-      (screen.getByRole('button', { name: 'Nova movimentação' }) as HTMLButtonElement).disabled,
-    ).toBe(false),
-  );
-  fireEvent.click(screen.getByRole('button', { name: /Meu espaço Modo local/ }));
-  const dialog = screen.getByRole('dialog');
+  await screen.findByRole('button', { name: 'Entrar com Google' });
+  const dialog = screen.getByRole('main');
+  expect(screen.queryByRole('button', { name: 'Nova movimentação' })).toBeNull();
   expect(within(dialog).queryByLabelText('Senha')).toBeNull();
   expect(within(dialog).queryByLabelText('Email')).toBeNull();
   fireEvent.click(within(dialog).getByRole('button', { name: 'Entrar com Google' }));

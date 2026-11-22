@@ -1,3 +1,11 @@
+# Estado atual — somente Supabase
+
+A versão atual exige conta Google, não grava novos dados financeiros em IndexedDB/localStorage e não oferece fallback local. Sincronização entre dispositivos usa a mesma conta, consulta a cada 30 segundos com a tela visível e revisão otimista para impedir sobrescritas. O histórico antigo só é removido depois de migração conferida.
+
+A Vercel está publicada em https://gevyro-financeiro.vercel.app, com variáveis públicas configuradas. O acesso administrativo ao projeto MCell continua recusado; a migração e o Google ainda não foram ativados. A nova versão bloqueia a tela financeira enquanto essa pendência existir. Não considerar a nuvem homologada.
+
+## Registro da entrega anterior
+
 # Estado atual do Gevyro Finanças
 
 Atualização: 22/11/2026. Esta lista distingue implementação de validação em produção. A entrega possui fluxos financeiros essenciais reais no modo local; o escopo integral das 37 seções ainda não pode ser considerado concluído.

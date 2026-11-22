@@ -180,6 +180,7 @@ export const workspaceSchema = z
       estimatedIncome: amount,
       reminderDays: z.number().int().min(0).max(90),
       onboarding: z.boolean(),
+      theme: z.enum(['light', 'dark']).optional(),
     }),
   })
   .superRefine((w, ctx) => {
