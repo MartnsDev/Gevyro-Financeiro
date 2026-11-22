@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+package-lock.json
+.openai/local
+docs/PROMPT-ORIGINAL.md
+
+next-env.d.ts
+
+docs/PROMPT-PROTECAO-CUSTOS.md
+public/custos-e-backup.html
