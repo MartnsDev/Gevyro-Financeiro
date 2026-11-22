@@ -312,24 +312,53 @@ export default function FinanceApp() {
   const lock = useRef(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const f = useCallback((n: number) => money(n, hidden), [hidden]);
-  const refresh = useCallback(async (userId?: string) => {
-    const attempt = ++loadAttempt.current;
-    setW(emptyWorkspace());
-    setRevision(0);
-    setReady(false);
-    setLoadError('');
-    try {
-      const data = await loadWorkspace(userId);
-      if (attempt !== loadAttempt.current) return;
-      setW(data.data);
-      setRevision(data.revision);
-    } catch (e) {
-      if (attempt === loadAttempt.current)
-        setLoadError(e instanceof Error ? e.message : 'Não foi possível carregar os dados.');
-    } finally {
-      if (attempt === loadAttempt.current) setReady(true);
-    }
+  const resetWorkspaceView = useCallback(() => {
+    setEntryOpen(false);
+    setEditing(undefined);
+    setSubscriptionNew(false);
+    setResource(null);
+    setEditResource(undefined);
+    setJournalOpen(false);
+    setPayment(null);
+    setDetail(null);
+    setInvoice(null);
+    setAuthOpen(false);
+    setOnboarding(false);
+    setNotifications(false);
+    setConfirm(null);
+    setSearch('');
+    setImportRows([]);
+    setImportAccount('');
+    setImportHash('');
+    setImportHeaders([]);
+    setRawImport([]);
+    setSelectedScenario('');
+    setSimulatedSubscriptions([]);
+    setAccountFilter('all');
+    setCategoryFilter('all');
   }, []);
+  const refresh = useCallback(
+    async (userId?: string) => {
+      const attempt = ++loadAttempt.current;
+      resetWorkspaceView();
+      setW(emptyWorkspace());
+      setRevision(0);
+      setReady(false);
+      setLoadError('');
+      try {
+        const data = await loadWorkspace(userId);
+        if (attempt !== loadAttempt.current) return;
+        setW(data.data);
+        setRevision(data.revision);
+      } catch (e) {
+        if (attempt === loadAttempt.current)
+          setLoadError(e instanceof Error ? e.message : 'Não foi possível carregar os dados.');
+      } finally {
+        if (attempt === loadAttempt.current) setReady(true);
+      }
+    },
+    [resetWorkspaceView],
+  );
   useEffect(() => {
     const saved = localStorage.getItem('gevyro-theme');
     const isDark = saved === 'dark';
@@ -350,6 +379,7 @@ export default function FinanceApp() {
         void supabase!.auth.getUser().then(({ data: verified, error: verificationError }) => {
           if (verificationError || !isGoogleUser(verified.user)) {
             ++loadAttempt.current;
+            resetWorkspaceView();
             setUser(null);
             setW(emptyWorkspace());
             setLoadError('Entre com uma conta Google exclusiva para acessar seus dados na nuvem.');
@@ -365,6 +395,7 @@ export default function FinanceApp() {
         data: { subscription },
       } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'INITIAL_SESSION') return;
+        if (event !== 'TOKEN_REFRESHED') resetWorkspaceView();
         if (session && !isGoogleUser(session.user)) {
           ++loadAttempt.current;
           setUser(null);
@@ -375,13 +406,18 @@ export default function FinanceApp() {
           return;
         }
         setUser(session?.user ?? null);
-        if (event !== 'TOKEN_REFRESHED') setTimeout(() => void refresh(session?.user.id), 0);
+        if (event !== 'TOKEN_REFRESHED') {
+          ++loadAttempt.current;
+          setW(emptyWorkspace());
+          setReady(false);
+          setTimeout(() => void refresh(session?.user.id), 0);
+        }
       });
       return () => subscription.unsubscribe();
     }
     const timeout = setTimeout(() => void refresh(), 0);
     return () => clearTimeout(timeout);
-  }, [refresh]);
+  }, [refresh, resetWorkspaceView]);
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -408,6 +444,7 @@ export default function FinanceApp() {
   async function commit(next: Workspace, action: string) {
     if (lock.current) throw new Error('Aguarde a operação atual.');
     if (loadError) throw new Error('Recarregue os dados antes de gravar.');
+    const attempt = loadAttempt.current;
     lock.current = true;
     setBusy(true);
     try {
@@ -416,6 +453,7 @@ export default function FinanceApp() {
         audit: [...next.audit, { id: uid(), at: new Date().toISOString(), action }],
       });
       const nextRevision = await saveWorkspace(updated, revision, user?.id);
+      if (attempt !== loadAttempt.current) return;
       setW(updated);
       setRevision(nextRevision);
       toast.success(action);

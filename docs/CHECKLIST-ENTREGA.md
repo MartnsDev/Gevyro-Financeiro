@@ -14,13 +14,13 @@
 - [x] Política de relato de vulnerabilidades e prompt de revisão de segurança documentados.
 - [x] CI com permissões mínimas, sem segredos, actions fixadas por commit e banco descartável independente do MCell.
 
-## Confirmar no encerramento
+## Evidência de execução
 
-O log final de execução e a resposta de entrega informam a quantidade de testes e os resultados definitivos de lint, tipos, formatação e build. Não confundir arquivos preparados com recursos ativados.
+A execução local final aprovou 97 testes, incluindo gravação em andamento durante logout sem reapresentação dos dados anteriores. Lint, tipos, formatação, scanner e build também foram aprovados. A primeira execução no GitHub concluiu com sucesso; as execuções seguintes podem ser consultadas em https://github.com/MartnsDev/Gevyro-Financeiro/actions. Não confundir arquivos preparados com recursos ativados.
 
 ## Homologação externa pendente
 
-- [ ] Registrar envio completo e commit em `https://github.com/MartnsDev/Gevyro-Financeiro`.
+- [x] Envio completo confirmado em `https://github.com/MartnsDev/Gevyro-Financeiro` (commit inicial `9fb8364eabdb6a35300b5d00e5c0ac1268a3cb4a`).
 - [ ] Deploy Vercel real concluído, URL e projeto confirmados, integração GitHub exata.
 - [ ] Acesso administrativo Supabase conectado, plano conferido e três migrations instaladas no projeto real.
 - [ ] Google OAuth habilitado no provedor com Client ID/Secret privados e redirects exatos.
@@ -34,3 +34,5 @@ A nuvem continua desabilitada até validação real. A revisão estática procur
 A exportação estática usa scripts inline no bootstrap Next.js e a CSP permite inline. As sessões persistidas e o modo local dependem da segurança do perfil do navegador. Administradores de banco conservam seus privilégios. Consulte [SECURITY.md](../SECURITY.md).
 
 As limitações funcionais avançadas continuam descritas em [VERIFICACAO-FUNCIONAL.md](VERIFICACAO-FUNCIONAL.md). Nenhuma certificação de segurança, sincronização bancária, cotação automática ou garantia de retorno financeiro é declarada.
+
+A sessão local da Vercel respondeu HTTP 403. A revisão automática bloqueou uma consulta adicional à credencial; esse caminho foi encerrado. É necessária uma conexão Vercel válida. A integração Supabase também continua sem conexão administrativa, portanto não houve ativação remota nem alteração de dados MCell.
