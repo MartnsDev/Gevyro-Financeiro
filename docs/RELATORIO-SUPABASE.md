@@ -24,12 +24,16 @@ Apenas `https://gevyro-financeiro.vercel.app/` foi acrescentada aos redirects de
 
 Referência do aviso corrigido: [função SECURITY DEFINER acessível a authenticated](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable).
 
-## Estado do aplicativo
+## Ativação Google e Vercel
 
-O código da Vercel exige conta e não faz novas gravações financeiras locais. A chave pública fornecida pelo proprietário foi validada e atualizada no ambiente de produção. A ativação permanece bloqueada até concluir Google e conferir o plano; a trava de verificação em código e a variável de habilitação ainda não foram liberadas.
+O proprietário forneceu as credenciais OAuth. Elas foram configuradas somente no provedor Supabase por um arquivo administrativo temporário privado, sem entrar no GitHub ou em variáveis públicas. O diff declarou apenas as propriedades do Google; demais provedores e configurações MCell permaneceram preservados.
 
-O Google respondeu como desativado no endpoint público de Auth. O proprietário informou que vai conferir a configuração. É necessário preencher Client ID e Client Secret diretamente no painel Supabase. A URI de callback do provedor é `https://bcfjhwcsulylodayczkr.supabase.co/auth/v1/callback`; o redirect do aplicativo já está autorizado. Não enviar esses segredos ao repositório.
+O endpoint público confirmou Google habilitado (HTTP 200). A entrada OAuth/PKCE respondeu HTTP 302 para `accounts.google.com`, com Client ID e callback conferidos. O plano Free foi confirmado pelo proprietário nesta conversa; não houve upgrade nem contratação de recursos. Isso não constitui auditoria de faturamento da organização.
 
-O plano da organização MCell não pôde ser confirmado pelas consultas disponíveis da CLI. Nenhum plano, faturamento ou adicional foi alterado. A confirmação do plano Free continua pendente.
+A migration adicional `20261122185409_gevyro_linked_google_sessions.sql` permite contas MCell com identidade de email vinculada ao Google, exigindo AMR OAuth e Google como única identidade externa. Sessões por senha, OTP ou outras identidades OAuth continuam recusadas. Ela passou em PostgreSQL descartável, na regressão MCell e em testes de autorização no banco real usando claims sintéticas dentro de transação READ ONLY com rollback, sem inserir usuários ou consultar registros financeiros.
 
-A homologação com duas contas Google, criação de registros reais de teste e sincronização entre dispositivos ainda depende dessa ativação. Os testes automatizados da aplicação usam fixtures e backend simulado; os testes SQL usam PostgreSQL descartável. Nenhum histórico financeiro local foi migrado ou apagado por esta instalação.
+O código foi liberado com `deploymentVerified: true` e a variável de produção habilitada. O aplicativo mantém os dados financeiros somente no Supabase e exige login. A atualização entre dispositivos ocorre a cada 30 segundos com a tela visível e ao retomar a janela/conexão; formulários abertos pausam a atualização para preservar rascunhos.
+
+## Limites da homologação
+
+O consentimento Google, a troca final do código OAuth e a gravação com uma conta Google real precisam ser exercitados pelo usuário entrando no aplicativo. A validação de várias contas/dispositivos em navegador não foi executada nesta sessão. Os testes automatizados de interface usam fixtures e backend simulado; os testes SQL cobrem o motor e a autorização. Nenhum histórico financeiro local foi migrado ou apagado por esta instalação.

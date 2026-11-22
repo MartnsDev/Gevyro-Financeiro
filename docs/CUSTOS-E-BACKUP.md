@@ -26,6 +26,10 @@ Você pode baixar JSON/CSV explicitamente. Esses arquivos são cópias sob seu c
 
 O orçamento adicional autorizado continua R$ 0,00. Não foram contratados novos bancos, serviços, adicionais ou cotações. O app restringe cada documento financeiro a 12 MiB e mantém os limites de importação. Essa medida não é uma cota de cobrança da Vercel ou do Supabase. O plano e o uso dos provedores devem ser acompanhados nos painéis oficiais.
 
-## Ativação real pendente
+## Nuvem configurada
 
-As variáveis públicas estão configuradas na Vercel. As tabelas, políticas e funções Gevyro já foram instaladas e verificadas no MCell pela CLI autorizada. O Google continua desativado e a confirmação do plano Free está pendente. A tela financeira fica bloqueada até concluir a configuração. Não se anuncia uma conexão ativa só porque existe uma URL/chave.
+As variáveis públicas estão configuradas na Vercel. As tabelas, políticas e funções Gevyro foram instaladas e verificadas no MCell pela CLI autorizada. O Google está habilitado e o fluxo OAuth/PKCE redireciona ao Google com o Client ID e o callback corretos. O proprietário confirmou o plano Free. A configuração do aplicativo foi liberada para esse projeto.
+
+O acesso financeiro exige login. Sessões por senha continuam recusadas mesmo quando a conta MCell já tinha identidade de email e depois vinculou Google. A validação completa do consentimento Google e da gravação com uma conta real requer entrar no aplicativo; os testes automatizados não acessam a conta Google do usuário.
+
+Nenhum serviço pago, upgrade, crédito ou adicional foi contratado. A confirmação do plano pelo proprietário não é uma auditoria de faturamento ou garantia de uso ilimitado.

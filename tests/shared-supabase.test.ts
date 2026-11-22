@@ -13,11 +13,20 @@ describe('Supabase MCell com autorização restrita', () => {
     expect(SHARED_SUPABASE.saveRpc).toBe('gevyro_save_workspace');
     expect(SHARED_SUPABASE.storageKey).toBe('gevyro-financas-auth-v1');
   });
-  it('mantém rede bloqueada até validar plano e migração, mesmo com opt-in', () => {
-    expect(SHARED_SUPABASE.deploymentVerified).toBe(false);
+  it('permite somente o projeto verificado com habilitação explícita', () => {
+    expect(SHARED_SUPABASE.deploymentVerified).toBe(true);
     expect(isAuthorizedSharedSupabase('https://bcfjhwcsulylodayczkr.supabase.co', 'true')).toBe(
+      true,
+    );
+    expect(isAuthorizedSharedSupabase('https://bcfjhwcsulylodayczkr.supabase.co', 'false')).toBe(
       false,
     );
+    expect(isAuthorizedSharedSupabase('https://bcfjhwcsulylodayczkr.supabase.co')).toBe(false);
+  });
+  it('identifica o serviço pronto depois da ativação', () => {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://bcfjhwcsulylodayczkr.supabase.co');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_SHARED_PROJECT_ENABLED', 'true');
+    expect(sharedSupabaseState()).toBe('ready');
   });
   it('informa pendência sem simular uma conexão ativa', () => {
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://bcfjhwcsulylodayczkr.supabase.co');

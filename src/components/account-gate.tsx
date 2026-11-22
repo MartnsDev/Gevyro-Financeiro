@@ -32,7 +32,7 @@ export function AccountGate({ children }: { children: (user: User) => ReactNode 
         const { data, error: authError } = await supabase!.auth.getUser();
         if (authError) throw authError;
         if (!isGoogleUser(data.user))
-          throw new Error('Entre com uma conta que use somente Google para acessar o Gevyro.');
+          throw new Error('Entre com uma conta com identidade Google para acessar o Gevyro.');
         if (active && attempt === epoch) {
           setUser(data.user);
           setError('');

@@ -13,6 +13,8 @@ do $$ begin
  if (public.gevyro_load_workspace()->>'revision')::int<>1 then raise exception 'FAIL Google owner';end if;
  if (select count(*) from gevyro_finance.workspace_meta)<>1 then raise exception 'FAIL owner RLS';end if;
 end $$;
+set local request.jwt.claims='{"app_metadata":{"provider":"email","providers":["email","google"]},"amr":[{"method":"oauth"}]}';
+do $$ begin if (public.gevyro_load_workspace()->>'revision')::int<>1 then raise exception 'FAIL linked Google identity';end if;end $$;
 set local request.jwt.claim.sub='66666666-6666-4666-8666-666666666666';
 do $$ begin
  if public.gevyro_load_workspace() is not null or exists(select 1 from gevyro_finance.workspace_meta) then raise exception 'FAIL cross-user leak';end if;
@@ -20,6 +22,7 @@ end $$;
 set local request.jwt.claim.sub='55555555-5555-4555-8555-555555555555';
 do $$ declare claims jsonb; begin
  foreach claims in array array[
+  '{"app_metadata":{"provider":"email","providers":["email","google"]},"amr":[{"method":"password"}]}'::jsonb,
   '{"app_metadata":{"provider":"email","providers":["email"]},"amr":[{"method":"password"}]}'::jsonb,
   '{"app_metadata":{"provider":"google","providers":["google"]},"amr":[{"method":"password"}]}'::jsonb,
   '{"app_metadata":{"provider":"google","providers":["google","github"]},"amr":[{"method":"oauth"}]}'::jsonb,

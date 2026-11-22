@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { emptyWorkspace } from '../src/domain/types';
 import {
   assertRemoteAllowed,
@@ -8,6 +8,8 @@ import {
   jsonBytes,
 } from '../src/lib/cost-policy';
 import { loadWorkspace, saveWorkspace } from '../src/lib/storage';
+beforeEach(() => vi.stubEnv('NEXT_PUBLIC_SUPABASE_SHARED_PROJECT_ENABLED', 'false'));
+afterEach(() => vi.unstubAllEnvs());
 describe('Proteção de orçamento zero', () => {
   it('bloqueia conexões externas mesmo com credenciais presentes', async () => {
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co');

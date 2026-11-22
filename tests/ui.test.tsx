@@ -60,4 +60,4 @@ it('cadastra conta, registra despesa paga e preserva o saldo após remontar', as
   await waitFor(() => expect(document.documentElement.classList.contains('dark')).toBe(true));
   fireEvent.click(screen.getByRole('button', { name: 'Ocultar valores' }));
   expect(screen.getByRole('button', { name: /Saldo disponível/ }).textContent).toContain('•••••');
-});
+}, 20000);

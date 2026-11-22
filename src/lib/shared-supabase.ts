@@ -5,8 +5,8 @@ export const SHARED_SUPABASE = Object.freeze({
   loadRpc: 'gevyro_load_workspace',
   saveRpc: 'gevyro_save_workspace',
   storageKey: 'gevyro-financas-auth-v1',
-  // Turn on only after inspecting the actual Free plan and applying the isolated migration.
-  deploymentVerified: false,
+  // Database/RLS verified and Google OAuth enabled on 22/11/2026. Free plan confirmed by owner.
+  deploymentVerified: true,
 });
 export function isAuthorizedSharedSupabase(url?: string, enabled?: string): boolean {
   if (!url || enabled !== 'true' || !SHARED_SUPABASE.deploymentVerified) return false;

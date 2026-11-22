@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { repositoryFiles } from './repository-files.mjs';
 const findings = [];
 const patterns = [
+  ['segredo Google OAuth', /\bGOCSPX-[A-Za-z0-9_-]{15,}\b/],
   ['chave privada', /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/],
   ['token GitHub', /\b(?:gh[pousr]_[A-Za-z0-9]{25,}|github_pat_[A-Za-z0-9_]{30,})\b/],
   ['segredo Supabase', /\bsb_secret_[A-Za-z0-9_-]{15,}\b/],

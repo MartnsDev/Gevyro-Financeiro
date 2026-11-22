@@ -59,7 +59,7 @@ A interface busca novas informações automaticamente a cada 30 segundos enquant
 
 A sessão de autenticação pode permanecer no navegador para manter o acesso. Os registros financeiros são carregados na memória durante o uso, sem serem guardados em um banco local. Backups JSON/CSV só são baixados quando você solicitar.
 
-**A ativação real da nuvem continua pendente de acesso administrativo ao projeto MCell, instalação das migrations e configuração Google.** Até lá, a tela financeira fica bloqueada; não existe fallback para gravar no navegador.
+**A conexão ao Supabase está habilitada, com login Google e isolamento dos dados por usuário.** Entre com a mesma conta em cada dispositivo. A tela financeira exige autenticação e não oferece fallback para gravar no navegador.
 
 Se você usava a versão anterior, é possível recuperar um backup do histórico antigo e migrá-lo explicitamente para uma conta vazia. A cópia anterior só é removida depois de conferir a gravação no Supabase.
 
@@ -75,7 +75,7 @@ O Gevyro é um organizador financeiro pessoal. Cotações, valores patrimoniais 
 
 ## Estado desta edição
 
-> **Atualização remota:** o acesso pela CLI foi autorizado e as tabelas/RLS/RPCs Gevyro já foram instaladas e verificadas no MCell. A correção adicional dos RPCs privados também foi aplicada. O redirect Vercel está autorizado. Faltam habilitar Google, confirmar o plano Free e homologar o login antes de liberar a nuvem no app. Consulte [relatório da instalação](docs/RELATORIO-SUPABASE.md). As menções a acesso recusado e migrations ausentes abaixo são registros anteriores à instalação.
+> **Nuvem ativada:** Google habilitado no Supabase, tabelas/RLS/RPCs instalados e verificados, plano Free confirmado pelo proprietário e conexão do aplicativo liberada para o projeto MCell autorizado. Os registros financeiros são gravados somente no Supabase. Menções a etapas pendentes abaixo são registros históricos; consulte o relatório atualizado.
 
 Os fluxos financeiros essenciais estão implementados com persistência exclusiva na nuvem, condicionada à ativação do projeto real. A publicação na Vercel e o login Google no projeto real exigem as conexões administrativas e a validação descritas no [checklist de entrega](docs/CHECKLIST-ENTREGA.md). Os limites funcionais estão na [verificação funcional](docs/VERIFICACAO-FUNCIONAL.md).
 

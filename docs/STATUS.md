@@ -1,6 +1,6 @@
 # Estado atual — somente Supabase
 
-> **Atualização remota:** o acesso pela CLI foi autorizado e as tabelas/RLS/RPCs Gevyro já foram instaladas e verificadas no MCell. A correção adicional dos RPCs privados também foi aplicada. O redirect Vercel está autorizado. Faltam habilitar Google, confirmar o plano Free e homologar o login antes de liberar a nuvem no app. Consulte [relatório da instalação](RELATORIO-SUPABASE.md). As menções a acesso recusado e migrations ausentes abaixo são registros anteriores à instalação.
+> **Nuvem ativada:** Google habilitado no Supabase, tabelas/RLS/RPCs instalados e verificados, plano Free confirmado pelo proprietário e conexão do aplicativo liberada para o projeto MCell autorizado. Os registros financeiros são gravados somente no Supabase. Menções a etapas pendentes abaixo são registros históricos; consulte o relatório atualizado.
 
 A versão atual exige conta Google, não grava novos dados financeiros em IndexedDB/localStorage e não oferece fallback local. Sincronização entre dispositivos usa a mesma conta, consulta a cada 30 segundos com a tela visível e revisão otimista para impedir sobrescritas. O histórico antigo só é removido depois de migração conferida.
 

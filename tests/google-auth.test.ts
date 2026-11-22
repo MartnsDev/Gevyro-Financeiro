@@ -5,11 +5,14 @@ function user(app_metadata: Record<string, unknown>, user_metadata = {}) {
   return { app_metadata, user_metadata } as User;
 }
 describe('Acesso exclusivo Google', () => {
-  it('aceita somente metadados Auth Google sem outros provedores', () => {
+  it('exige identidade Google confiável, permitindo a identidade email já usada no MCell', () => {
     expect(isGoogleUser(user({ provider: 'google', providers: ['google'] }))).toBe(true);
     expect(isGoogleUser(null)).toBe(false);
     expect(isGoogleUser(user({}, { provider: 'google', providers: ['google'] }))).toBe(false);
-    expect(isGoogleUser(user({ provider: 'google', providers: ['google', 'email'] }))).toBe(false);
+    expect(isGoogleUser(user({ provider: 'google', providers: ['google', 'email'] }))).toBe(true);
+    expect(isGoogleUser(user({ provider: 'email', providers: ['email', 'google'] }))).toBe(true);
+    expect(isGoogleUser(user({ provider: 'google', providers: ['google', 'github'] }))).toBe(false);
+    expect(isGoogleUser(user({ provider: 'google', providers: ['google', 'google'] }))).toBe(false);
     expect(isGoogleUser(user({ provider: 'email', providers: ['email'] }))).toBe(false);
   });
   it('solicita apenas Google, sem escopos extras e retorna à mesma origem', async () => {

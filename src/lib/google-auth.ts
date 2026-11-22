@@ -1,15 +1,16 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 
 // App metadata comes from Auth, never from editable user_metadata.
-// Restrict accounts with linked non-Google identities conservatively.
+// Email identities may be linked in shared MCell accounts; the database also requires OAuth AMR.
 export function isGoogleUser(user: User | null | undefined): user is User {
   const providers: unknown = user?.app_metadata?.providers;
   return (
     !!user &&
-    user.app_metadata.provider === 'google' &&
+    ['google', 'email'].includes(user.app_metadata.provider ?? '') &&
     Array.isArray(providers) &&
-    providers.length === 1 &&
-    providers[0] === 'google'
+    providers.includes('google') &&
+    providers.every((provider) => provider === 'google' || provider === 'email') &&
+    new Set(providers).size === providers.length
   );
 }
 
