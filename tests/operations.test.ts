@@ -55,13 +55,13 @@ describe('Histórico e alterações', () => {
     expect(changed.obligations[2].amount).toBe(10000);
     expect(w.obligations[1].amount).toBe(10000);
   });
-  it('pagamento impede edição silenciosa mesmo após estorno', () => {
+  it('edição individual preserva pagamento estornado e vencimento original', () => {
     let w = setup();
     w = addPayment(w, 'p:1', 'a', 10000, '2024-01-31', 'pay');
     w = reversePayment(w, 'pay');
-    expect(() =>
-      editOccurrence(w, 'p:1', { name: 'Outro', amount: 15000, date: '2024-02-01' }),
-    ).toThrow();
+    const updated = editOccurrence(w, 'p:1', { name: 'Outro', amount: 15000, date: '2024-02-01' });
+    expect(updated.obligations[0].originalDate).toBe('2024-01-31');
+    expect(updated.payments).toEqual(w.payments);
     expect(w.payments).toHaveLength(1);
   });
   it('alterações futuras preservam parcelas liquidadas e total contratado', () => {

@@ -31,6 +31,7 @@ function fixture() {
       id: 'i',
       name: 'CDB',
       type: 'investment',
+      classification: 'Renda fixa',
       value: 20000,
       cost: 16000,
       date: '2024-01-01',

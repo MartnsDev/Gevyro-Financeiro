@@ -1,7 +1,7 @@
 import Decimal from 'decimal.js';
 import { addDays, addMonths, format, parseISO } from 'date-fns';
 import type { Account, Card, Obligation, Plan, Workspace } from './types';
-import { eventCash } from './event-cash';
+import { eventCash, investmentIncomeCash } from './event-cash';
 export function cents(value: string): number {
   const normalized = value
     .trim()
@@ -114,8 +114,11 @@ export function paid(w: Workspace, id: string): number {
       .filter((p) => p.obligationId === id && !p.reversed)
       .reduce((s, p) => s + p.amount, 0) -
     w.events
-      .filter((e) => e.kind === 'purchase_refund' && e.targetId === id)
-      .reduce((s, e) => s + e.amount, 0)
+      .filter(
+        (e) =>
+          ['purchase_refund', 'purchase_refund_reversal'].includes(e.kind) && e.targetId === id,
+      )
+      .reduce((s, e) => s + (e.kind === 'purchase_refund' ? e.amount : -e.amount), 0)
   );
 }
 export function due(w: Workspace, o: Obligation): number {
@@ -125,8 +128,11 @@ export function due(w: Workspace, o: Obligation): number {
       .filter((e) => e.kind === 'obligation_adjustment' && e.targetId === o.id)
       .reduce((s, e) => s + e.amount, 0) -
     w.events
-      .filter((e) => e.kind === 'purchase_refund' && e.targetId === o.id)
-      .reduce((s, e) => s + e.amount, 0)
+      .filter(
+        (e) =>
+          ['purchase_refund', 'purchase_refund_reversal'].includes(e.kind) && e.targetId === o.id,
+      )
+      .reduce((s, e) => s + (e.kind === 'purchase_refund' ? e.amount : -e.amount), 0)
   );
 }
 export function remaining(w: Workspace, o: Obligation): number {
@@ -190,15 +196,23 @@ export function cashFlow(w: Workspace, month: string) {
       },
       {
         income: w.events
-          .filter((e) => e.kind === 'investment_income' && monthOf(e.date) === month)
-          .reduce((s, e) => s + e.amount, 0),
+          .filter((e) => monthOf(e.date) === month)
+          .reduce((s, e) => s + investmentIncomeCash(w.events, e), 0),
         expense:
           w.events
             .filter((e) => monthOf(e.date) === month)
             .reduce(
               (s, e) =>
                 s +
-                (e.kind === 'debt_payment' ? e.fee : e.kind === 'purchase_refund' ? -e.amount : 0),
+                (e.reversalFeeOf
+                  ? -e.amount
+                  : e.kind === 'debt_payment'
+                    ? e.fee
+                    : e.kind === 'purchase_refund'
+                      ? -e.amount
+                      : e.kind === 'purchase_refund_reversal'
+                        ? e.amount
+                        : 0),
               0,
             ) + w.transfers.filter((t) => monthOf(t.date) === month).reduce((s, t) => s + t.fee, 0),
       },
@@ -308,6 +322,9 @@ export function addPayment(
   const o = w.obligations.find((o) => o.id === obligationId);
   const a = w.accounts.find((a) => a.id === accountId);
   if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+    Number.isNaN(Date.parse(date)) ||
+    new Date(date).toISOString().slice(0, 10) !== date ||
     !o ||
     !a ||
     o.cancelled ||

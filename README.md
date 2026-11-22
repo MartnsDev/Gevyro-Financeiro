@@ -94,3 +94,13 @@ Acesse `http://localhost:3000`. Sem a nuvem habilitada, o aplicativo mostra a co
 ---
 
 <p align="center"><strong>Gevyro Finanças</strong><br />Organização para hoje. Clareza para o que vem depois.</p>
+
+## Mais clareza em cada parcela e investimento
+
+Corrija o vencimento de uma parcela sem mexer nas demais. Antecipe as que fizerem sentido, veja o que já pagou e acompanhe o saldo da compra até a última parcela. Cada correção preserva seu histórico.
+
+Na carteira, organize renda fixa, ações, fundos imobiliários, ETFs, Tesouro, fundos e cripto por ativo e instituição. Registre compras, vendas, aportes e proventos com suas taxas e impostos. O Gevyro separa investimento de consumo e mostra a avaliação que você informou, sem inventar preços.
+
+O dashboard distingue consumo, pagamentos, investimentos, transferências, dívidas e patrimônio. Assim, pagar a fatura não se transforma em uma segunda compra e um aporte não se mistura ao gasto do mês.
+
+[Conheça os controles, as verificações e os limites desta atualização](docs/ATUALIZACAO-CONTROLE-FINANCEIRO.md).

@@ -37,3 +37,9 @@ O código foi liberado com `deploymentVerified: true` e a variável de produçã
 ## Limites da homologação
 
 O consentimento Google, a troca final do código OAuth e a gravação com uma conta Google real precisam ser exercitados pelo usuário entrando no aplicativo. A validação de várias contas/dispositivos em navegador não foi executada nesta sessão. Os testes automatizados de interface usam fixtures e backend simulado; os testes SQL cobrem o motor e a autorização. Nenhum histórico financeiro local foi migrado ou apagado por esta instalação.
+
+## Atualização do controle financeiro individual
+
+A migration `20261122195625_gevyro_financial_control.sql` foi instalada após os testes descartáveis. Ela permite correções individuais preservando o original, valida operações de investimento e estornos vinculados e mantém o prefixo imutável da auditoria. Não executa backfill ou DML sobre dados financeiros anteriores.
+
+Pós-instalação: 14 tabelas Gevyro com RLS; validador privado invoker sem grants ao cliente; RPC público continua invoker e sem execução anônima. As duas restrições atualizadas do livro foram confirmadas. Advisor: zero avisos Gevyro, 15 avisos anteriores externos ao Gevyro.

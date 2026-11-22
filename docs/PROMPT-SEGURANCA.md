@@ -15,3 +15,7 @@ Atue como revisor de segurança deste aplicativo financeiro. Repositório autori
 11. Gere relatório com achado, severidade justificada, evidência sem segredos, correção, teste e risco residual. Separe confirmado, não verificado e bloqueado. Um teste local não é homologação remota. Não prometa “100% seguro”.
 
 Execute lint, tipos, testes, scanner, build e SQL descartável. Ao final, informe commit, deploy confirmado, controles aplicados e pendências reais. Não declare nuvem, OAuth ou RLS de produção prontos sem evidência no ambiente real.
+
+## Controles adicionados nesta atualização
+
+Verifique a função privada `validate_financial_update`, a manutenção dos RPCs públicos invoker e a ausência de grants de execução do novo validador ao cliente. Tente duplicar `(planId, installment)`, sobrescrever vencimento original, apagar auditoria, alterar um pagamento anterior, repetir/forjar estorno de reembolso, desviar sua conta, adulterar preço × quantidade, caixa, custo, posição e sequência de investimento. Cada tentativa deve falhar com rollback integral. Confira também que estornar juros devolve o caixa e reverte sua despesa nos relatórios. Não execute fixtures de testes ou importe exemplos na produção.

@@ -1,5 +1,31 @@
 import { z } from 'zod';
 import Decimal from 'decimal.js';
+import { investmentClasses } from './types';
+const quantity = z.string().regex(/^(0|[1-9]\d{0,12})(\.\d{1,12})?$/);
+const position = z.object({
+  value: z.number().int().min(0).max(1e13),
+  cost: z.number().int().min(0).max(1e13),
+  quantity: quantity.optional(),
+});
+export const investmentDetailsSchema = z.object({
+  sequence: z.number().int().positive().max(50000),
+  operation: z.enum([
+    'buy',
+    'sell',
+    'contribution',
+    'redemption',
+    'income',
+    'dividend',
+    'reversal',
+  ]),
+  quantity: quantity.optional(),
+  unitPrice: quantity.optional(),
+  tax: z.number().int().min(0).max(1e13),
+  cash: z.number().int().min(-1e13).max(1e13),
+  before: position,
+  after: position,
+  reversalOf: z.string().optional(),
+});
 const id = z.string().min(1).max(100);
 const text = z.string().max(2000);
 const amount = z.number().int().min(0).max(1e13);
@@ -66,6 +92,7 @@ export const workspaceSchema = z
             'goal_withdrawal',
             'obligation_adjustment',
             'purchase_refund',
+            'purchase_refund_reversal',
           ]),
           targetId: id,
           accountId: z.string(),
@@ -73,6 +100,9 @@ export const workspaceSchema = z
           fee: amount,
           date,
           note: text,
+          investment: investmentDetailsSchema.optional(),
+          reversalOf: id.optional(),
+          reversalFeeOf: id.optional(),
         }),
       )
       .max(50000)
@@ -111,6 +141,9 @@ export const workspaceSchema = z
           subscription: z.boolean(),
           cancelled: z.boolean(),
           paused: z.boolean().optional(),
+          originalDate: date.optional(),
+          originalAmount: amount.positive().optional(),
+          notes: text.optional(),
         }),
       )
       .max(200000),
@@ -153,6 +186,11 @@ export const workspaceSchema = z
         id,
         name: text.min(1),
         type: z.enum(['investment', 'asset', 'debt']),
+        classification: z.enum(investmentClasses).optional(),
+        ticker: text.optional(),
+        subcategory: text.optional(),
+        institution: text.optional(),
+        quantity: quantity.optional(),
         value: amount,
         cost: amount,
         date,
@@ -170,7 +208,36 @@ export const workspaceSchema = z
       }),
     ),
     categories: z.array(text).max(500),
-    audit: z.array(z.object({ id, at: z.string(), action: text })),
+    audit: z.array(
+      z.object({
+        id,
+        at: z.iso.datetime(),
+        action: text,
+        undoOf: id.optional(),
+        changes: z
+          .array(
+            z.object({
+              entity: z.enum([
+                'accounts',
+                'cards',
+                'plans',
+                'obligations',
+                'payments',
+                'transfers',
+                'goals',
+                'budgets',
+                'assets',
+                'scenarios',
+                'events',
+              ]),
+              id,
+              before: z.record(z.string(), z.unknown()).nullable(),
+              after: z.record(z.string(), z.unknown()).nullable(),
+            }),
+          )
+          .optional(),
+      }),
+    ),
     imports: z.array(text),
     preferences: z.object({
       archivedCategories: z.array(text).max(500).optional(),
@@ -208,6 +275,11 @@ export const workspaceSchema = z
           const value = (record as unknown as Record<string, unknown>)[key];
           if (typeof value === 'number') magnitude = magnitude.add(new Decimal(value).abs());
         }
+    for (const e of w.events)
+      if (e.investment)
+        magnitude = magnitude
+          .add(new Decimal(e.investment.tax).abs())
+          .add(new Decimal(e.investment.cash).abs());
     if (magnitude.gt(Number.MAX_SAFE_INTEGER))
       ctx.addIssue({
         code: 'custom',
@@ -247,6 +319,11 @@ export const workspaceSchema = z
         (!o.cardId && !accountIds.has(o.accountId))
       )
         fail('Obrigação com referência inválida.');
+    if (
+      new Set(w.obligations.map((o) => `${o.planId}:${o.installment}`)).size !==
+      w.obligations.length
+    )
+      fail('Parcela duplicada na mesma compra.');
     const sums = new Map<string, number>();
     for (const p of w.payments) {
       if (!obs.has(p.obligationId) || !accountIds.has(p.accountId))
@@ -291,9 +368,12 @@ export const workspaceSchema = z
           .filter((e) => e.targetId === o.id && e.kind === 'obligation_adjustment')
           .reduce((s, e) => s + e.amount, 0);
       const refunded = w.events
-        .filter((e) => e.targetId === o.id && e.kind === 'purchase_refund')
-        .reduce((s, e) => s + e.amount, 0);
-      if (adjusted < 0 || refunded > (sums.get(o.id) || 0))
+        .filter(
+          (e) =>
+            e.targetId === o.id && ['purchase_refund', 'purchase_refund_reversal'].includes(e.kind),
+        )
+        .reduce((s, e) => s + (e.kind === 'purchase_refund' ? e.amount : -e.amount), 0);
+      if (adjusted < 0 || refunded < 0 || refunded > (sums.get(o.id) || 0))
         fail('Ajuste ou estorno excede o permitido.');
     }
     for (const t of w.transfers)

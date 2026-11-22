@@ -1,6 +1,6 @@
 'use client';
 import type { FormEvent } from 'react';
-import type { Workspace } from '@/domain/types';
+import { investmentClasses, type Workspace } from '@/domain/types';
 import { Button } from './ui/button';
 import { today } from '@/domain/finance';
 export type ResourceKind =
@@ -34,7 +34,9 @@ export function ResourceForm({
         name={name}
         type={type}
         defaultValue={initial?.[name] ?? value}
-        required={name !== 'notes' && name !== 'institution' && name !== 'last4'}
+        required={
+          !['notes', 'institution', 'last4', 'ticker', 'subcategory', 'quantity'].includes(name)
+        }
         min={type === 'number' ? 0 : undefined}
         step={type === 'number' ? '0.01' : undefined}
       />
@@ -127,6 +129,33 @@ export function ResourceForm({
           ])}
           {input('amount', 'Limite mensal (R$)', 'number')}
           {input('month', 'Mês de competência', 'month', today().slice(0, 7))}
+        </>
+      )}
+      {kind === 'investment' && (
+        <>
+          <label>
+            Classe do investimento
+            <select name="classification" defaultValue={initial?.classification ?? ''} required>
+              <option value="" disabled>
+                Selecione a classe
+              </option>
+              {investmentClasses.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="form-grid">
+            {input('ticker', 'Código / ticker (opcional)')}
+            {input('subcategory', 'Subcategoria (opcional)')}
+          </div>
+          {input('institution', 'Instituição / corretora (opcional)')}
+          {input('quantity', 'Quantidade atual (opcional)')}
+          <div className="notice">
+            Para um novo aporte, inicie com valor e custo zero e registre a operação na carteira.
+            Posições anteriores podem ser cadastradas pelo valor já existente, sem movimentar caixa.
+          </div>
         </>
       )}
       {['asset', 'debt', 'investment'].includes(kind) && (

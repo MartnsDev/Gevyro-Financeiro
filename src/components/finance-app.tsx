@@ -82,11 +82,15 @@ import {
   cancelFuture,
   pauseSubscription,
   resumeSubscription,
-  editOccurrence,
   revisePlan,
   reverseImport,
   reversePayment,
 } from '@/domain/operations';
+import { InvestmentPanel } from './investment-panel';
+import { OccurrenceControl, PurchaseDialog } from './installment-control';
+import { RecordHistory } from './record-history';
+import { recordChanges, undoChange } from '@/domain/history';
+import { financialOverview } from '@/domain/overview';
 import { workspaceSchema } from '@/domain/validation';
 import { loadWorkspace, saveWorkspace } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
@@ -278,6 +282,8 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
   const [journalOpen, setJournalOpen] = useState(false);
   const [payment, setPayment] = useState<Obligation | null>(null);
   const [detail, setDetail] = useState<Obligation | null>(null);
+  const [purchaseId, setPurchaseId] = useState('');
+  const [investmentEditing, setInvestmentEditing] = useState(false);
   const [invoice, setInvoice] = useState<{ card: string; month: string } | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [onboarding, setOnboarding] = useState(false);
@@ -322,6 +328,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
     setJournalOpen(false);
     setPayment(null);
     setDetail(null);
+    setPurchaseId('');
     setInvoice(null);
     setAuthOpen(false);
     setOnboarding(false);
@@ -372,6 +379,9 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
   const editingCloudData =
     entryOpen ||
     !!resource ||
+    !!detail ||
+    !!purchaseId ||
+    investmentEditing ||
     journalOpen ||
     !!payment ||
     !!invoice ||
@@ -418,7 +428,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
     if ('serviceWorker' in navigator)
       void navigator.serviceWorker.register('/sw.js').catch(() => {});
   }, []);
-  async function commit(next: Workspace, action: string) {
+  async function commit(next: Workspace, action: string, undoOf?: string) {
     if (lock.current) throw new Error('Aguarde a operação atual.');
     if (loadError) throw new Error('Recarregue os dados antes de gravar.');
     const attempt = loadAttempt.current;
@@ -427,7 +437,16 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
     try {
       const updated = persistNotifications({
         ...next,
-        audit: [...next.audit, { id: uid(), at: new Date().toISOString(), action }],
+        audit: [
+          ...w.audit,
+          {
+            id: uid(),
+            at: new Date().toISOString(),
+            action,
+            changes: recordChanges(w, next),
+            ...(undoOf ? { undoOf } : {}),
+          },
+        ],
       });
       const nextRevision = await saveWorkspace(updated, revision, user?.id);
       if (attempt !== loadAttempt.current) return;
@@ -547,12 +566,28 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
             throw new Error('Já existe um orçamento para essa categoria e mês.');
           next.budgets = [
             ...w.budgets.filter((b) => b.id !== id),
-            { id, category: v.category, amount: value('amount'), month: v.month },
+            {
+              id,
+              category: v.category,
+              amount: value('amount'),
+              month: v.month,
+              perspective: v.perspective as 'cash' | 'accrual',
+            },
           ];
           break;
         case 'investment':
         case 'asset':
         case 'debt':
+          if (
+            resource === 'investment' &&
+            w.events.some((e) => e.targetId === id && e.kind.startsWith('investment_')) &&
+            value('cost') !== w.assets.find((a) => a.id === id)?.cost
+          )
+            throw new Error(
+              'Com operações registradas, o custo só pode ser corrigido por estorno da operação.',
+            );
+          if (v.date > today())
+            throw new Error('Avaliações precisam de uma data efetiva, até hoje.');
           next.assets = [
             ...w.assets.filter((a) => a.id !== id),
             {
@@ -563,6 +598,15 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
               cost: value('cost'),
               date: v.date,
               notes: v.notes || '',
+              ...(resource === 'investment'
+                ? {
+                    classification: v.classification as import('@/domain/types').InvestmentClass,
+                    ticker: v.ticker || '',
+                    subcategory: v.subcategory || '',
+                    institution: v.institution || '',
+                    ...(v.quantity ? { quantity: v.quantity.replace(',', '.') } : {}),
+                  }
+                : {}),
             },
           ];
           break;
@@ -575,7 +619,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
           if (w.accounts.some((a) => [v.from, v.to].includes(a.id) && v.date < a.openingDate))
             throw new Error('A transferência não pode anteceder o saldo inicial das contas.');
           next.transfers = [
-            ...w.transfers,
+            ...w.transfers.filter((t) => t.id !== id),
             {
               id,
               from: v.from,
@@ -939,7 +983,13 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
               </Button>
             }
           >
-            <JournalHistory w={w} hidden={hidden} />
+            <JournalHistory
+              w={w}
+              hidden={hidden}
+              commit={commit}
+              busy={busy}
+              onEditingChange={setInvestmentEditing}
+            />
           </Panel>
         );
       case 'dashboard':
@@ -1012,6 +1062,21 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                 onClick={() => go('planning')}
               />
             </div>
+            <section className="panel financial-overview">
+              <h2>Consumo, movimentação e patrimônio</h2>
+              <p className="muted">
+                Consumo na data da compra; pagamento da fatura liquida a dívida e movimenta o caixa
+                uma única vez.
+              </p>
+              <div className="stats-grid three">
+                {Object.entries(financialOverview(w, month)).map(([label, value]) => (
+                  <div key={label}>
+                    <small>{label}</small>
+                    <h3>{f(value)}</h3>
+                  </div>
+                ))}
+              </div>
+            </section>
             <div className="dashboard-main">
               <Panel
                 title="Seu fluxo financeiro"
@@ -1231,6 +1296,18 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                       <strong>
                         {f(t.amount)} {t.fee ? `(+ ${f(t.fee)} de tarifa)` : ''}
                       </strong>
+                      <button
+                        className="text-button"
+                        onClick={() =>
+                          openResource('transfer', {
+                            ...t,
+                            amount: t.amount / 100,
+                            fee: t.fee / 100,
+                          })
+                        }
+                      >
+                        Editar transferência
+                      </button>
                     </div>
                   ))}
               </div>
@@ -1386,7 +1463,10 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                     const rows = w.obligations.filter((o) => o.planId === p.id && !o.cancelled);
                     const left = rows.reduce((s, o) => s + remaining(w, o), 0);
                     const done = rows.filter((o) => remaining(w, o) === 0).length;
-                    const end = rows.at(-1)?.date;
+                    const end = rows
+                      .map((o) => o.date)
+                      .sort()
+                      .at(-1);
                     return (
                       <div className="plan-item" key={p.id}>
                         <span className="goal-icon">
@@ -1402,8 +1482,14 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                           </p>
                           <progress value={done} max={p.count} />
                           <small>
-                            Libera aproximadamente {f(Math.floor(p.amount / p.count))}/mês após o
-                            encerramento.
+                            Libera aproximadamente{' '}
+                            {f(
+                              rows
+                                .filter((o) => remaining(w, o) > 0)
+                                .sort((a, b) => a.date.localeCompare(b.date))
+                                .at(-1)?.amount ?? 0,
+                            )}
+                            /mês após o encerramento.
                           </small>
                         </div>
                         <div className="right">
@@ -1412,9 +1498,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                           <button
                             className="text-button"
                             onClick={() => {
-                              setSearch(p.name);
-                              setFilter('all');
-                              go('transactions');
+                              setPurchaseId(p.id);
                             }}
                           >
                             Consultar parcelas
@@ -2084,8 +2168,21 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
           </Panel>
         );
       case 'investments':
+        return (
+          <InvestmentPanel
+            onEditingChange={setInvestmentEditing}
+            w={w}
+            busy={busy}
+            hidden={hidden}
+            commit={commit}
+            onNew={() => openResource('investment')}
+            onEdit={(a) =>
+              openResource('investment', { ...a, value: a.value / 100, cost: a.cost / 100 })
+            }
+          />
+        );
       case 'wealth': {
-        const items = w.assets.filter((a) => page === 'wealth' || a.type === 'investment');
+        const items = w.assets;
         return (
           <>
             <div className="stats-grid three">
@@ -2515,26 +2612,21 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
               title="Histórico de alterações"
               subtitle="As últimas operações confirmadas na persistência"
             >
-              <div className="audit-list">
-                {w.audit.length ? (
-                  w.audit
-                    .slice(-30)
-                    .reverse()
-                    .map((a) => (
-                      <div key={a.id}>
-                        <ShieldCheck size={16} />
-                        <strong>{a.action}</strong>
-                        <time>{format(parseISO(a.at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</time>
-                      </div>
-                    ))
-                ) : (
-                  <Empty
-                    icon={ShieldCheck}
-                    title="Um histórico transparente"
-                    description="Cada alteração confirmada aparecerá aqui."
-                  />
-                )}
-              </div>
+              <RecordHistory
+                w={w}
+                busy={busy}
+                onUndo={(a) =>
+                  setConfirm({
+                    title: 'Desfazer alteração?',
+                    description:
+                      'O valor anterior será restaurado se não houver alterações ou movimentos dependentes posteriores.',
+                    run: async () => {
+                      await commit(undoChange(w, a), 'Alteração desfeita', a.id);
+                      setConfirm(null);
+                    },
+                  })
+                }
+              />
             </Panel>
           </>
         );
@@ -3236,6 +3328,16 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
         commit={commit}
         busy={busy}
       />
+      <PurchaseDialog
+        key={purchaseId}
+        w={w}
+        planId={purchaseId}
+        hidden={hidden}
+        busy={busy}
+        commit={commit}
+        onClose={() => setPurchaseId('')}
+        onDetail={setDetail}
+      />
       <Modal
         open={!!detail}
         onOpenChange={(open) => {
@@ -3258,62 +3360,24 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
             </div>
             <div className="detail-row">
               <span>Valor original</span>
-              <strong>{f(detail.amount)}</strong>
+              <strong>{f(detail.originalAmount ?? detail.amount)}</strong>
             </div>
             <div className="detail-row">
               <span>Saldo restante</span>
               <strong>{f(remaining(w, detail))}</strong>
             </div>
             <p className="muted">
-              {w.plans.find((p) => p.id === detail.planId)?.notes || 'Sem observações.'}
+              {detail.notes ||
+                w.plans.find((p) => p.id === detail.planId)?.notes ||
+                'Sem observações.'}
             </p>
-            {!w.payments.some((p) => p.obligationId === detail.id) && (
-              <form
-                className="form"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const data = new FormData(e.currentTarget);
-                  try {
-                    await commit(
-                      editOccurrence(w, detail.id, {
-                        name: String(data.get('name')),
-                        amount: cents(String(data.get('amount'))),
-                        date: String(data.get('date')),
-                      }),
-                      'Ocorrência atualizada',
-                    );
-                    setDetail(null);
-                  } catch (err) {
-                    toast.error(err instanceof Error ? err.message : 'Falha ao editar.');
-                  }
-                }}
-              >
-                <label>
-                  Descrição
-                  <input name="name" defaultValue={detail.name} required />
-                </label>
-                <div className="form-grid">
-                  <label>
-                    Valor (R$)
-                    <input
-                      name="amount"
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      defaultValue={detail.amount / 100}
-                      required
-                    />
-                  </label>
-                  <label>
-                    Vencimento
-                    <input name="date" type="date" defaultValue={detail.date} required />
-                  </label>
-                </div>
-                <Button type="submit" variant="outline" disabled={busy}>
-                  Editar somente esta ocorrência
-                </Button>
-              </form>
-            )}
+            <OccurrenceControl
+              w={w}
+              o={detail}
+              busy={busy}
+              commit={commit}
+              onClose={() => setDetail(null)}
+            />
             {w.payments
               .filter((p) => p.obligationId === detail.id)
               .map((p) => (

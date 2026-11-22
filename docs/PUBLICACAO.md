@@ -19,12 +19,12 @@ O código público não contém credenciais administrativas. Configure no ambien
 
 As variáveis públicas entram no bundle por definição. Não são um cofre. O aplicativo nunca precisa de service role, senha PostgreSQL ou Google Client Secret no build ou no navegador.
 
-A trava `deploymentVerified: false` em `src/lib/shared-supabase.ts` permanece até a verificação real. Somente alterar env não ativa a nuvem. Registrar a verificação em código e refazer build/deploy é uma etapa posterior à homologação. Enquanto a nuvem estiver desabilitada, o acesso financeiro fica bloqueado. Não há modo financeiro local.
+A nuvem está ativada com `deploymentVerified: true`, após a verificação das tabelas, políticas, RPCs e configuração Google. O projeto autorizado continua restrito em código e nas variáveis públicas. Não há modo financeiro local.
 
 ## Supabase compartilhado
 
 1. Confirme projeto `bcfjhwcsulylodayczkr`, plano Free e escopo MCell. Inspecione estrutura e faça backup operacional sem publicar dados reais.
-2. Aplique, em ordem, somente `202611220001_shared_mcell.sql`, `202611220002_financial_events.sql` , `202611220003_google_access.sql` , `20261122180826_gevyro_private_rpc.sql` e `20261122185409_gevyro_linked_google_sessions.sql`. Se uma já estiver instalada, valide a versão antes de prosseguir. Não execute a migration standalone `202611200001_financial_workspace.sql` nem `supabase db push` indiscriminado.
+2. Aplique, em ordem, somente `202611220001_shared_mcell.sql`, `202611220002_financial_events.sql` , `202611220003_google_access.sql` , `20261122180826_gevyro_private_rpc.sql` `20261122185409_gevyro_linked_google_sessions.sql` e `20261122195625_gevyro_financial_control.sql`. Se uma já estiver instalada, valide a versão antes de prosseguir. Não execute a migration standalone `202611200001_financial_workspace.sql` nem `supabase db push` indiscriminado.
 3. Mantenha `gevyro_finance` fora dos schemas expostos pela Data API. São necessários apenas os dois RPCs públicos prefixados Gevyro. Não crie executor SQL genérico.
 4. Habilite Google OAuth com as credenciais próprias no painel Supabase. O Google Client Secret fica no provedor. No Google Cloud, a URI de retorno é a URI `/auth/v1/callback` informada pelo Supabase; siga a tela do projeto confirmado. Não desabilite nem substitua provedores usados pelo MCell.
 5. Acrescente apenas a origem HTTPS definitiva do Gevyro, com `/` final, aos redirects autorizados do Supabase. Preserve os redirects e a Site URL do MCell. Evite curingas amplos e não libere indiscriminadamente todas as previews Vercel.

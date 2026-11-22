@@ -1,9 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import type { EventKind, Workspace } from '@/domain/types';
 import { cents, money, today } from '@/domain/finance';
-import { addFinancialEvent, settleInstallment } from '@/domain/journal';
+import { addFinancialEvent, reverseFinancialEvent, settleInstallment } from '@/domain/journal';
 import { Modal } from './ui/dialog';
 import { Button } from './ui/button';
 export const eventLabels: Record<EventKind, string> = {
@@ -17,6 +17,7 @@ export const eventLabels: Record<EventKind, string> = {
   goal_withdrawal: 'Retirar reserva',
   obligation_adjustment: 'Juros, multa ou desconto',
   purchase_refund: 'Reembolso de compra paga',
+  purchase_refund_reversal: 'Estorno de reembolso',
 };
 export function JournalDialog({
   open,
@@ -99,13 +100,13 @@ export function JournalDialog({
             value={kind}
             onChange={(e) => setKind(e.target.value as EventKind | 'settlement')}
           >
-            {Object.entries({ ...eventLabels, settlement: 'Quitar parcelamento' }).map(
-              ([id, label]) => (
+            {Object.entries({ ...eventLabels, settlement: 'Quitar parcelamento' })
+              .filter(([key]) => key !== 'purchase_refund_reversal')
+              .map(([id, label]) => (
                 <option value={id} key={id}>
                   {label}
                 </option>
-              ),
-            )}
+              ))}
           </select>
         </label>
         <label>
@@ -184,33 +185,177 @@ export function JournalDialog({
     </Modal>
   );
 }
-export function JournalHistory({ w, hidden = false }: { w: Workspace; hidden?: boolean }) {
+export function JournalHistory({
+  w,
+  hidden = false,
+  commit,
+  busy = false,
+  onEditingChange,
+}: {
+  w: Workspace;
+  hidden?: boolean;
+  commit?: (w: Workspace, action: string) => Promise<void>;
+  busy?: boolean;
+  onEditingChange?: (editing: boolean) => void;
+}) {
+  const [correcting, setCorrecting] = useState('');
+  useEffect(() => {
+    onEditingChange?.(!!correcting);
+    return () => onEditingChange?.(false);
+  }, [correcting, onEditingChange]);
+  const selected = w.events.find((e) => e.id === correcting);
+
   return (
-    <div className="audit-list">
-      {w.events.length ? (
-        w.events
-          .slice()
-          .reverse()
-          .slice(0, 100)
-          .map((e) => (
-            <div key={e.id}>
-              <div>
-                <strong>{eventLabels[e.kind]}</strong>
-                <p className="muted">
-                  {e.note} · {e.date}
-                </p>
+    <>
+      <div className="audit-list">
+        {w.events.length ? (
+          w.events
+            .slice()
+            .reverse()
+            .slice(0, 100)
+            .map((e) => (
+              <div key={e.id}>
+                <div>
+                  <strong>{eventLabels[e.kind]}</strong>
+                  <p className="muted">
+                    {e.note} · {e.date}
+                  </p>
+                </div>
+                {commit &&
+                  !e.kind.startsWith('investment_') &&
+                  !e.reversalOf &&
+                  !e.reversalFeeOf &&
+                  !w.events.some((x) => x.reversalOf === e.id) && (
+                    <button className="text-button" onClick={() => setCorrecting(e.id)}>
+                      Corrigir movimento
+                    </button>
+                  )}
+                <strong>
+                  {money(e.amount, hidden)}
+                  {e.fee
+                    ? ` + ${money(e.fee, hidden)} ${e.kind === 'debt_payment' ? 'juros' : 'taxas'}`
+                    : ''}
+                </strong>
               </div>
-              <strong>
-                {money(e.amount, hidden)}
-                {e.fee ? ` + ${money(e.fee, hidden)} juros` : ''}
-              </strong>
-            </div>
-          ))
-      ) : (
-        <p className="muted" style={{ padding: '20px 0' }}>
-          Os ajustes, aportes, amortizações, reservas e reembolsos aparecerão aqui.
-        </p>
-      )}
-    </div>
+            ))
+        ) : (
+          <p className="muted" style={{ padding: '20px 0' }}>
+            Os ajustes, aportes, amortizações, reservas e reembolsos aparecerão aqui.
+          </p>
+        )}
+      </div>
+      <Modal
+        open={!!selected}
+        onOpenChange={(open) => {
+          if (!open) setCorrecting('');
+        }}
+        title="Corrigir movimento financeiro"
+        description="O original será compensado por um estorno. A correção será salva na mesma transação."
+      >
+        {selected && (
+          <form
+            className="form"
+            key={selected.id}
+            onSubmit={async (ev) => {
+              ev.preventDefault();
+              if (!commit) return;
+              const data = new FormData(ev.currentTarget);
+              try {
+                let next = reverseFinancialEvent(
+                  w,
+                  selected.id,
+                  crypto.randomUUID(),
+                  String(data.get('date')),
+                );
+                if (data.get('mode') !== 'reverse')
+                  next = addFinancialEvent(next, {
+                    ...selected,
+                    id: crypto.randomUUID(),
+                    amount: cents(String(data.get('amount'))),
+                    fee: cents(String(data.get('fee') || '0')),
+                    date: String(data.get('date')),
+                    note: String(data.get('note')),
+                    accountId: String(data.get('accountId') || selected.accountId),
+                  });
+                await commit(next, 'Movimento corrigido com histórico preservado');
+                setCorrecting('');
+              } catch (e) {
+                toast.error(
+                  e instanceof Error ? e.message : 'Não foi possível corrigir o movimento.',
+                );
+              }
+            }}
+          >
+            <label>
+              Ação
+              <select name="mode">
+                <option value="correct">Estornar original e salvar correção</option>
+                <option value="reverse">Somente estornar original</option>
+              </select>
+            </label>
+            <label>
+              Valor corrigido (R$)
+              <input
+                name="amount"
+                type="number"
+                step="0.01"
+                defaultValue={selected.amount / 100}
+                required
+              />
+            </label>
+            {selected.kind === 'debt_payment' && (
+              <label>
+                Juros corrigidos (R$)
+                <input
+                  name="fee"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  defaultValue={selected.fee / 100}
+                  required
+                />
+              </label>
+            )}
+            <label>
+              Data efetiva
+              <input
+                name="date"
+                type="date"
+                defaultValue={today()}
+                min={selected.date}
+                max={today()}
+                required
+              />
+            </label>
+            {!selected.kind.startsWith('goal_') &&
+              !['obligation_adjustment', 'balance_adjustment'].includes(selected.kind) && (
+                <label>
+                  Conta
+                  <select name="accountId" defaultValue={selected.accountId}>
+                    {w.accounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            <label>
+              Observações
+              <textarea
+                name="note"
+                minLength={3}
+                maxLength={2000}
+                defaultValue={selected.note}
+                required
+              />
+            </label>
+            <Button type="submit" disabled={busy}>
+              Confirmar correção
+            </Button>
+          </form>
+        )}
+      </Modal>
+    </>
   );
 }

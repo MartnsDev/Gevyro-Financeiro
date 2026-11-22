@@ -17,10 +17,12 @@ export function FlowChart({
   data,
   hidden = false,
   projection = false,
+  lineLabel = 'Saldo projetado',
 }: {
   data: { name: string; income: number; expense: number; balance?: number }[];
   hidden?: boolean;
   projection?: boolean;
+  lineLabel?: string;
 }) {
   return (
     <div className="flow-chart" aria-label="Gráfico financeiro">
@@ -59,7 +61,7 @@ export function FlowChart({
           <Area
             type="monotone"
             dataKey={projection ? 'balance' : 'income'}
-            name={projection ? 'Saldo projetado' : 'Receitas'}
+            name={projection ? lineLabel : 'Receitas'}
             stroke="#059669"
             fill="url(#incomeFill)"
             strokeWidth={2.5}
@@ -83,9 +85,11 @@ export function FlowChart({
 export function CategoryChart({
   data,
   hidden,
+  centerLabel = 'Total do mês',
 }: {
   data: { name: string; value: number }[];
   hidden: boolean;
+  centerLabel?: string;
 }) {
   const total = data.reduce((s, d) => s + d.value, 0);
   return (
@@ -109,13 +113,13 @@ export function CategoryChart({
           </PieChart>
         </ResponsiveContainer>
         <div className="donut-center">
-          <small>Total do mês</small>
+          <small>{centerLabel}</small>
           <strong>{money(total, hidden)}</strong>
         </div>
       </div>
       <div className="category-legend">
         {data.length ? (
-          data.slice(0, 4).map((d, i) => (
+          data.map((d, i) => (
             <div key={d.name}>
               <span className="legend-label">
                 <i style={{ background: palette[i % palette.length] }} />

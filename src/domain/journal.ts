@@ -1,4 +1,5 @@
 import Decimal from 'decimal.js';
+import { investmentOperation } from './investments';
 import { z } from 'zod';
 import type { FinancialEvent, Workspace } from './types';
 import { balance, paid, today, remaining, addPayment } from './finance';
@@ -15,6 +16,7 @@ export const eventSchema = z.object({
     'goal_withdrawal',
     'obligation_adjustment',
     'purchase_refund',
+    'purchase_refund_reversal',
   ]),
   targetId: z.string().min(1),
   accountId: z.string(),
@@ -27,10 +29,29 @@ export const eventSchema = z.object({
   fee: z.number().int().min(0).max(1e13),
   date: z.iso.date(),
   note: z.string().min(3).max(2000),
+  reversalOf: z.string().optional(),
+  reversalFeeOf: z.string().optional(),
 });
 export function addFinancialEvent(w: Workspace, input: FinancialEvent): Workspace {
   const e = eventSchema.parse(input);
   if (w.events.some((x) => x.id === e.id)) return w;
+  if (e.kind.startsWith('investment_'))
+    return investmentOperation(w, {
+      id: e.id,
+      assetId: e.targetId,
+      accountId: e.accountId,
+      date: e.date,
+      operation:
+        e.kind === 'investment_contribution'
+          ? 'contribution'
+          : e.kind === 'investment_redemption'
+            ? 'redemption'
+            : 'income',
+      amount: e.amount,
+      fee: e.fee,
+      tax: 0,
+      note: e.note,
+    });
   if (e.date > today()) throw new Error('O evento precisa ter data efetiva, até hoje.');
   if (!['obligation_adjustment', 'balance_adjustment'].includes(e.kind) && e.amount <= 0)
     throw new Error('Informe um valor positivo.');
@@ -80,9 +101,11 @@ export function addFinancialEvent(w: Workspace, input: FinancialEvent): Workspac
       throw new Error('As reservas excedem seu dinheiro disponível.');
     next = { ...next, goals: w.goals.map((x) => (x.id === g.id ? { ...x, reserved } : x)) };
   }
-  if (['obligation_adjustment', 'purchase_refund'].includes(e.kind)) {
+  if (['obligation_adjustment', 'purchase_refund', 'purchase_refund_reversal'].includes(e.kind)) {
     const o = w.obligations.find((o) => o.id === e.targetId);
     if (!o || o.cancelled || o.kind !== 'expense') throw new Error('Escolha uma despesa ativa.');
+    if (e.kind === 'purchase_refund_reversal' && !e.reversalOf)
+      throw new Error('Use o estorno vinculado ao reembolso original.');
     if (e.kind === 'purchase_refund' && e.amount > paid(w, o.id))
       throw new Error('O reembolso excede o que foi efetivamente pago.');
     const due =
@@ -145,5 +168,70 @@ export function settleInstallment(
     const value = remaining(next, o);
     if (value) next = addPayment(next, o.id, accountId, value, date, `${key}:${o.id}`);
   }
+  return next;
+}
+
+// Corrections append compensating entries; no financial event is rewritten.
+export function reverseFinancialEvent(
+  w: Workspace,
+  eventId: string,
+  key: string,
+  date: string,
+): Workspace {
+  const e = w.events.find((e) => e.id === eventId);
+  if (w.events.some((x) => x.id === `${key}:principal`)) return w;
+  if (
+    !e ||
+    e.reversalOf ||
+    w.events.some((x) => x.reversalOf === eventId) ||
+    e.kind.startsWith('investment_')
+  )
+    throw new Error('Este evento exige seu fluxo próprio de correção ou já foi estornado.');
+  if (date < e.date) throw new Error('O estorno não pode anteceder o movimento original.');
+  const opposite: Partial<Record<FinancialEvent['kind'], FinancialEvent['kind']>> = {
+    balance_adjustment: 'balance_adjustment',
+    obligation_adjustment: 'obligation_adjustment',
+    goal_reserve: 'goal_withdrawal',
+    goal_withdrawal: 'goal_reserve',
+    debt_drawdown: 'debt_payment',
+    debt_payment: 'debt_drawdown',
+    purchase_refund: 'purchase_refund_reversal',
+  };
+  const kind = opposite[e.kind];
+  if (!kind) throw new Error('Estorno indisponível para este evento.');
+  const amount = ['balance_adjustment', 'obligation_adjustment'].includes(e.kind)
+    ? -e.amount
+    : e.amount;
+  let next = addFinancialEvent(w, {
+    ...e,
+    id: `${key}:principal`,
+    kind,
+    amount,
+    fee: 0,
+    date,
+    note: `Estorno: ${e.note}`.slice(0, 2000),
+    reversalOf: e.id,
+  });
+  if (e.kind.startsWith('debt_')) {
+    const old = w.assets.find((a) => a.id === e.targetId)!;
+    const cost = old.cost - (e.kind === 'debt_drawdown' ? e.amount : 0);
+    if (cost < 0)
+      throw new Error(
+        'O custo da dívida foi alterado posteriormente. Confira o histórico antes de estornar.',
+      );
+    next = { ...next, assets: next.assets.map((a) => (a.id === old.id ? { ...a, cost } : a)) };
+  }
+  if (e.fee)
+    next = addFinancialEvent(next, {
+      id: `${key}:fee`,
+      kind: 'balance_adjustment',
+      targetId: e.accountId,
+      accountId: e.accountId,
+      amount: e.fee,
+      fee: 0,
+      date,
+      reversalFeeOf: e.id,
+      note: `Devolução de juros no estorno de ${e.id}`,
+    });
   return next;
 }

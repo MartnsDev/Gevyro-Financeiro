@@ -1,5 +1,6 @@
 import type { Obligation, Plan, Workspace } from './types';
-import { occurrences, splitInstallments, today } from './finance';
+import { addPayment, occurrences, splitInstallments, today } from './finance';
+import { z } from 'zod';
 
 export function extendRecurrences(w: Workspace, now = today()): Workspace {
   const ids = new Set(w.obligations.map((o) => o.id));
@@ -90,24 +91,82 @@ export function revisePlan(w: Workspace, plan: Plan, now = today()): Workspace {
 export function editOccurrence(
   w: Workspace,
   id: string,
-  changes: Pick<Obligation, 'name' | 'amount' | 'date'>,
+  changes: Pick<Obligation, 'name' | 'amount' | 'date'> &
+    Partial<Pick<Obligation, 'notes' | 'cancelled' | 'category'>>,
 ): Workspace {
   const o = w.obligations.find((o) => o.id === id);
   if (!o) throw new Error('Ocorrência não encontrada.');
-  if (w.payments.some((p) => p.obligationId === id))
-    throw new Error('Ocorrências com histórico de pagamento não podem ser reescritas.');
-  if (!changes.name.trim() || !Number.isSafeInteger(changes.amount) || changes.amount <= 0)
-    throw new Error('Descrição e valor são obrigatórios.');
-  const plan = w.plans.find((p) => p.id === o.planId);
-  if (plan?.mode === 'installment' && changes.amount !== o.amount)
-    throw new Error(
-      'Para preservar o total contratado, ajuste os valores pelo parcelamento completo.',
-    );
+  const parsed = z
+    .object({
+      name: z.string().trim().min(1).max(2000),
+      amount: z.number().int().positive().max(1e13),
+      date: z.iso.date(),
+      notes: z.string().max(2000).optional(),
+      cancelled: z.boolean().optional(),
+      category: z.string().min(1).max(2000).optional(),
+    })
+    .parse(changes);
+  const paidTotal = w.payments
+    .filter((p) => p.obligationId === id && !p.reversed)
+    .reduce((sum, p) => sum + p.amount, 0);
+  const adjustment = w.events
+    .filter((e) => e.kind === 'obligation_adjustment' && e.targetId === id)
+    .reduce((sum, e) => sum + e.amount, 0);
+  if (parsed.amount + adjustment < paidTotal)
+    throw new Error('O valor não pode ser inferior ao já pago. Corrija o pagamento primeiro.');
+  if (parsed.cancelled && paidTotal) throw new Error('Estorne os pagamentos antes de cancelar.');
   return {
     ...w,
-    obligations: w.obligations.map((row) => (row.id === id ? { ...row, ...changes } : row)),
+    obligations: w.obligations.map((row) =>
+      row.id === id
+        ? {
+            ...row,
+            ...parsed,
+            originalDate: row.originalDate ?? row.date,
+            originalAmount: row.originalAmount ?? row.amount,
+          }
+        : row,
+    ),
   };
 }
+export function correctPayment(
+  w: Workspace,
+  id: string,
+  accountId: string,
+  amount: number,
+  date: string,
+  newId: string,
+): Workspace {
+  const old = w.payments.find((p) => p.id === id && !p.reversed);
+  if (!old) throw new Error('Escolha um pagamento ativo.');
+  return addPayment(reversePayment(w, id), old.obligationId, accountId, amount, date, newId);
+}
+export function settleSelected(
+  w: Workspace,
+  ids: string[],
+  accountId: string,
+  date: string,
+  key: string,
+): Workspace {
+  if (!ids.length || new Set(ids).size !== ids.length)
+    throw new Error('Selecione parcelas diferentes.');
+  if (w.payments.some((p) => p.id.startsWith(`${key}:`))) return w;
+  let next = w;
+  for (const id of ids) {
+    const o = next.obligations.find((o) => o.id === id);
+    if (!o || o.cancelled) throw new Error('Parcela indisponível.');
+    const paid = next.payments
+      .filter((p) => p.obligationId === id && !p.reversed)
+      .reduce((s, p) => s + p.amount, 0);
+    const adjusted = next.events
+      .filter((e) => e.targetId === id && e.kind === 'obligation_adjustment')
+      .reduce((s, e) => s + e.amount, 0);
+    const amount = o.amount + adjusted - paid;
+    if (amount > 0) next = addPayment(next, id, accountId, amount, date, `${key}:${id}`);
+  }
+  return next;
+}
+
 export function reversePayment(w: Workspace, id: string): Workspace {
   const p = w.payments.find((p) => p.id === id);
   if (!p) throw new Error('Pagamento não encontrado.');

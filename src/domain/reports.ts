@@ -1,4 +1,5 @@
 import type { Workspace } from './types';
+import { investmentIncomeCash } from './event-cash';
 import { due, remaining } from './finance';
 export interface ReportRow {
   id: string;
@@ -52,7 +53,7 @@ export function reportRows(
       });
     for (const e of w.events) {
       const o = w.obligations.find((o) => o.id === e.targetId);
-      if (e.kind === 'purchase_refund')
+      if (['purchase_refund', 'purchase_refund_reversal'].includes(e.kind))
         rows.push({
           id: e.id,
           targetId: e.targetId,
@@ -62,20 +63,33 @@ export function reportRows(
           accountId: e.accountId,
           cardId: o?.cardId || '',
           kind: 'expense',
-          amount: -e.amount,
+          amount: e.kind === 'purchase_refund' ? -e.amount : e.amount,
           source: 'event',
         });
-      if (e.kind === 'investment_income' || (e.kind === 'debt_payment' && e.fee))
+      if (e.reversalFeeOf)
         rows.push({
           id: e.id,
           targetId: e.targetId,
-          name: e.kind === 'investment_income' ? 'Rendimento recebido' : 'Juros de dívida',
+          name: 'Juros devolvidos por estorno',
           date: e.date,
-          category: e.kind === 'investment_income' ? 'Investimentos' : 'Tarifas',
+          category: 'Tarifas',
           accountId: e.accountId,
           cardId: '',
-          kind: e.kind === 'investment_income' ? 'income' : 'expense',
-          amount: e.kind === 'investment_income' ? e.amount : e.fee,
+          kind: 'expense',
+          amount: -e.amount,
+          source: 'event',
+        });
+      if (investmentIncomeCash(w.events, e) || (e.kind === 'debt_payment' && e.fee))
+        rows.push({
+          id: e.id,
+          targetId: e.targetId,
+          name: investmentIncomeCash(w.events, e) ? 'Rendimento recebido' : 'Juros de dívida',
+          date: e.date,
+          category: investmentIncomeCash(w.events, e) ? 'Investimentos' : 'Tarifas',
+          accountId: e.accountId,
+          cardId: '',
+          kind: investmentIncomeCash(w.events, e) ? 'income' : 'expense',
+          amount: investmentIncomeCash(w.events, e) ? investmentIncomeCash(w.events, e) : e.fee,
           source: 'event',
         });
     }

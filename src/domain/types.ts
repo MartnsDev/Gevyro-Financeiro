@@ -58,6 +58,9 @@ export interface Obligation {
   subscription: boolean;
   cancelled: boolean;
   paused?: boolean;
+  originalDate?: string;
+  originalAmount?: number;
+  notes?: string;
 }
 export interface Payment {
   id: string;
@@ -90,10 +93,37 @@ export interface Budget {
   amount: number;
   month: string;
 }
+export const investmentClasses = [
+  'Renda fixa',
+  'Ações',
+  'Fundos imobiliários',
+  'ETFs',
+  'Tesouro Direto',
+  'Fundos de investimento',
+  'Criptomoedas',
+  'Outros investimentos',
+] as const;
+export type InvestmentClass = (typeof investmentClasses)[number];
+export interface InvestmentDetails {
+  sequence: number;
+  operation: 'buy' | 'sell' | 'contribution' | 'redemption' | 'income' | 'dividend' | 'reversal';
+  quantity?: string;
+  unitPrice?: string;
+  tax: number;
+  cash: number;
+  before: { value: number; cost: number; quantity?: string };
+  after: { value: number; cost: number; quantity?: string };
+  reversalOf?: string;
+}
 export interface Asset {
   id: string;
   name: string;
   type: 'investment' | 'asset' | 'debt';
+  classification?: InvestmentClass;
+  ticker?: string;
+  subcategory?: string;
+  institution?: string;
+  quantity?: string;
   value: number;
   cost: number;
   date: string;
@@ -107,10 +137,30 @@ export interface Scenario {
   expenseReduction: number;
   months: number;
 }
+export type HistoryEntity =
+  | 'accounts'
+  | 'cards'
+  | 'plans'
+  | 'obligations'
+  | 'payments'
+  | 'transfers'
+  | 'goals'
+  | 'budgets'
+  | 'assets'
+  | 'scenarios'
+  | 'events';
+export interface RecordChange {
+  entity: HistoryEntity;
+  id: string;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+}
 export interface Audit {
   id: string;
   at: string;
   action: string;
+  changes?: RecordChange[];
+  undoOf?: string;
 }
 export interface Preferences {
   archivedCategories?: string[];
@@ -197,7 +247,8 @@ export type EventKind =
   | 'goal_reserve'
   | 'goal_withdrawal'
   | 'obligation_adjustment'
-  | 'purchase_refund';
+  | 'purchase_refund'
+  | 'purchase_refund_reversal';
 export interface FinancialEvent {
   id: string;
   kind: EventKind;
@@ -207,6 +258,9 @@ export interface FinancialEvent {
   fee: number;
   date: string;
   note: string;
+  investment?: InvestmentDetails;
+  reversalOf?: string;
+  reversalFeeOf?: string;
 }
 export interface FinancialNotification {
   id: string;
