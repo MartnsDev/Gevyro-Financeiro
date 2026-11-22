@@ -13,7 +13,7 @@ import {
 import { cents, money, today } from '@/domain/finance';
 import { Modal } from './ui/dialog';
 import { Button } from './ui/button';
-import { CategoryChart, FlowChart } from './charts';
+import { CategoryChart, FlowChart } from './charts-lazy';
 import { RecordHistory } from './record-history';
 export function InvestmentPanel({
   w,
@@ -76,7 +76,7 @@ export function InvestmentPanel({
         </div>
         {p.assets.length ? (
           <div className="table-scroll">
-            <table>
+            <table className="investment-positions responsive-card-table">
               <thead>
                 <tr>
                   <th>Ativo</th>
@@ -90,22 +90,24 @@ export function InvestmentPanel({
               <tbody>
                 {p.assets.map((a) => (
                   <tr key={a.id}>
-                    <td>
+                    <td data-label="Ativo">
                       <strong>{a.name}</strong>
                       <small>
                         {a.ticker} · Avaliação em {a.date}
                       </small>
                     </td>
-                    <td>
+                    <td data-label="Classe / instituição">
                       {a.classification ?? 'Classifique este ativo'}
                       <small>
                         {a.subcategory} · {a.institution}
                       </small>
                     </td>
-                    <td>{hidden ? '•••' : (a.quantity ?? 'Não informada')}</td>
-                    <td>{f(a.cost)}</td>
-                    <td>{f(a.value)}</td>
-                    <td>
+                    <td data-label="Quantidade">
+                      {hidden ? '•••' : (a.quantity ?? 'Não informada')}
+                    </td>
+                    <td data-label="Aplicado">{f(a.cost)}</td>
+                    <td data-label="Atual">{f(a.value)}</td>
+                    <td data-label="Ações">
                       <div className="filter-inline">
                         <Button
                           size="sm"

@@ -1,6 +1,6 @@
 <p align="center">
 
-  <img src="public/brand/gevyro-mark.png" alt="Logo Gevyro" width="88" />
+  <img src="public/brand/gevyro-financas-symbol.png" alt="Logo Gevyro" width="88" />
 </p>
 
 <h1 align="center">Gevyro Finanças</h1>
@@ -9,7 +9,7 @@
 
 ![Apresentação ilustrativa da visão geral do Gevyro Finanças](docs/images/visao-geral.svg)
 
-> As imagens deste README são apresentações ilustrativas com valores fictícios. O aplicativo começa vazio, pronto para receber os seus registros.
+> As apresentações financeiras deste README usam valores fictícios. A imagem do login mostra a interface implementada. O aplicativo começa vazio, pronto para receber os seus registros.
 
 ## Faça suas finanças caberem na sua rotina
 
@@ -50,6 +50,14 @@ Você acompanha seu dinheiro com contexto: o que já aconteceu, o que está comp
 A identidade esmeralda da Gevyro encontra uma interface limpa, com navegação lateral, cartões organizados e temas claro e escuro. Você também pode ocultar valores na tela e usar atalhos para encontrar registros ou adicionar movimentações.
 
 ![Apresentação dos temas claro e escuro e do recurso de ocultar valores](docs/images/seu-espaco.svg)
+
+## Acesse com simplicidade, de onde estiver
+
+Entre com sua conta Google e encontre suas finanças no computador, tablet ou celular. No celular, uma barra inferior aproxima os principais controles do seu polegar; movimentações aparecem em cartões com vencimento, situação e ações claras.
+
+![Tela de acesso do Gevyro Finanças, com a marca oficial e entrada pelo Google](docs/images/login-gevyro.png)
+
+A imagem acima mostra a tela de acesso implementada. O notebook é a apresentação visual fornecida na referência da marca, com valores ocultos; ele não exibe dados de uma conta real.
 
 ## Seus dados merecem cuidado
 

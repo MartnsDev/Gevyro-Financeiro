@@ -291,7 +291,7 @@ export function PurchaseDialog({
           <strong>Saldo {f(left)}</strong>
         </div>
         <div className="table-scroll">
-          <table>
+          <table className="installment-table responsive-card-table">
             <thead>
               <tr>
                 <th>Selecionar</th>
@@ -305,7 +305,7 @@ export function PurchaseDialog({
             <tbody>
               {rows.map((o) => (
                 <tr key={o.id}>
-                  <td>
+                  <td data-label="Selecionar">
                     <input
                       type="checkbox"
                       aria-label={`Selecionar parcela ${o.installment}`}
@@ -320,18 +320,18 @@ export function PurchaseDialog({
                       }
                     />
                   </td>
-                  <td>
+                  <td data-label="Parcela">
                     {o.installment}/{o.total}
                   </td>
-                  <td>
+                  <td data-label="Vencimento">
                     {o.date}
                     <small>Original: {o.originalDate ?? o.date}</small>
                   </td>
-                  <td>
+                  <td data-label="Valor / saldo">
                     {f(o.amount)}
                     <small>Em aberto: {f(remaining(w, o))}</small>
                   </td>
-                  <td>
+                  <td data-label="Situação">
                     {labels[status(w, o)]}
                     {w.payments.some(
                       (p) =>
@@ -340,7 +340,7 @@ export function PurchaseDialog({
                         p.date < (o.originalDate ?? o.date),
                     ) && <small>Pagamento antecipado</small>}
                   </td>
-                  <td>
+                  <td data-label="Ações">
                     <button
                       className="text-button"
                       onClick={() => {

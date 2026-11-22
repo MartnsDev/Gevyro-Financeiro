@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import './responsive.css';
+import './login.css';
 export const metadata: Metadata = {
   title: 'Gevyro Finanças — Seu dinheiro, com clareza',
   description:
@@ -8,7 +10,13 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Gevyro Finanças' },
   icons: { icon: '/icon-32.png', apple: '/icon-192.png' },
 };
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#059669' };
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  interactiveWidget: 'resizes-content',
+  themeColor: '#059669',
+};
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>

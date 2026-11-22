@@ -18,6 +18,7 @@ const rootFiles = [
   'postcss.config.mjs',
   'eslint.config.mjs',
   'vitest.config.ts',
+  'playwright.config.ts',
   'vercel.json',
 ];
 const entries = readdirSync('.', { withFileTypes: true });

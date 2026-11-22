@@ -100,7 +100,9 @@ import { Button } from './ui/button';
 import { Modal } from './ui/dialog';
 import { EntryEditor } from './entry-form';
 import { ResourceForm, type ResourceKind } from './resource-form';
-import { CategoryChart, FlowChart } from './charts';
+import { CategoryChart, FlowChart } from './charts-lazy';
+import { MobileNavigation } from './mobile-navigation';
+import { TransactionCards } from './transaction-cards';
 import { GevyroLogo } from './gevyro-logo';
 import { CostSafetyPanel } from './cost-safety-panel';
 import { backupCSV, backupJSON } from '@/lib/backup';
@@ -274,6 +276,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
   const [hidden, setHidden] = useState(false);
   const [mobile, setMobile] = useState(false);
   const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
   const [entryOpen, setEntryOpen] = useState(false);
   const [editing, setEditing] = useState<Plan>();
   const [subscriptionNew, setSubscriptionNew] = useState(false);
@@ -281,7 +284,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
   const [editResource, setEditResource] = useState<Record<string, string | number>>();
   const [journalOpen, setJournalOpen] = useState(false);
   const [payment, setPayment] = useState<Obligation | null>(null);
-  const [detail, setDetail] = useState<Obligation | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [purchaseId, setPurchaseId] = useState('');
   const [investmentEditing, setInvestmentEditing] = useState(false);
   const [invoice, setInvoice] = useState<{ card: string; month: string } | null>(null);
@@ -327,7 +330,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
     setEditResource(undefined);
     setJournalOpen(false);
     setPayment(null);
-    setDetail(null);
+    setDetailId(null);
     setPurchaseId('');
     setInvoice(null);
     setAuthOpen(false);
@@ -335,6 +338,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
     setNotifications(false);
     setConfirm(null);
     setSearch('');
+    setTypeFilter('all');
     setImportRows([]);
     setImportAccount('');
     setImportHash('');
@@ -376,6 +380,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
       ++attempt.current;
     };
   }, [refresh, user.id]);
+  const detail = detailId ? (w.obligations.find((o) => o.id === detailId) ?? null) : null;
   const editingCloudData =
     entryOpen ||
     !!resource ||
@@ -705,7 +710,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
   );
   const filtered = useMemo(
     () =>
-      (search ? w.obligations : monthRows)
+      monthRows
         .filter((o) => {
           const q = search.toLowerCase();
           const plan = w.plans.find((p) => p.id === o.planId);
@@ -723,12 +728,13 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                 w.cards.find((c) => c.id === o.cardId)?.name,
               ].some((t) => t?.toLowerCase().includes(q))) &&
             (filter === 'all' || filter === o.kind || filter === status(w, o)) &&
+            (typeFilter === 'all' || typeFilter === o.kind) &&
             (categoryFilter === 'all' || o.category === categoryFilter) &&
             (accountFilter === 'all' || o.accountId === accountFilter || o.cardId === accountFilter)
           );
         })
         .sort((a, b) => b.date.localeCompare(a.date)),
-    [monthRows, search, w, filter, categoryFilter, accountFilter],
+    [monthRows, search, w, filter, typeFilter, categoryFilter, accountFilter],
   );
   const flowData = useMemo(
     () =>
@@ -793,100 +799,108 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
   }
   function transactionTable(rows: Obligation[], compact = false) {
     return rows.length ? (
-      <div className="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Descrição</th>
-              {!compact && <th>Categoria</th>}
-              <th>Data</th>
-              <th>Status</th>
-              <th className="right">Valor</th>
-              <th>
-                <span className="sr-only">Ações</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.slice(0, compact ? 5 : listLimit).map((o) => {
-              const s = status(w, o);
-              return (
-                <tr key={o.id}>
-                  <td>
-                    <div className="transaction-title">
-                      <span className={`transaction-icon ${o.kind}`}>
-                        {o.kind === 'income' ? (
-                          <ArrowDownLeft size={17} />
-                        ) : (
-                          <ArrowUpRight size={17} />
-                        )}
-                      </span>
-                      <div>
-                        <strong>{o.name}</strong>
-                        <small>
-                          {o.cardId
-                            ? w.cards.find((c) => c.id === o.cardId)?.name
-                            : w.accounts.find((a) => a.id === o.accountId)?.name}
-                          {o.total > 1 ? ` · Parcela ${o.installment}/${o.total}` : ''}
-                        </small>
-                      </div>
-                    </div>
-                  </td>
-                  {!compact && (
+      <div className="transaction-view">
+        <TransactionCards
+          rows={rows.slice(0, compact ? 5 : listLimit)}
+          w={w}
+          hidden={hidden}
+          onDetail={(o) => setDetailId(o.id)}
+          onPay={(o) =>
+            o.cardId ? setInvoice({ card: o.cardId, month: monthOf(o.date) }) : setPayment(o)
+          }
+        />
+        <div className="table-scroll desktop-transactions">
+          <table>
+            <thead>
+              <tr>
+                <th>Descrição</th>
+                {!compact && <th>Categoria</th>}
+                <th>Data</th>
+                <th>Status</th>
+                <th className="right">Valor</th>
+                <th>
+                  <span className="sr-only">Ações</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(0, compact ? 5 : listLimit).map((o) => {
+                const s = status(w, o);
+                return (
+                  <tr key={o.id}>
                     <td>
-                      <span className="category-pill">{o.category}</span>
+                      <div className="transaction-title">
+                        <span className={`transaction-icon ${o.kind}`}>
+                          {o.kind === 'income' ? (
+                            <ArrowDownLeft size={17} />
+                          ) : (
+                            <ArrowUpRight size={17} />
+                          )}
+                        </span>
+                        <div>
+                          <strong>{o.name}</strong>
+                          <small>
+                            {o.cardId
+                              ? w.cards.find((c) => c.id === o.cardId)?.name
+                              : w.accounts.find((a) => a.id === o.accountId)?.name}
+                            {o.total > 1 ? ` · Parcela ${o.installment}/${o.total}` : ''}
+                          </small>
+                        </div>
+                      </div>
                     </td>
-                  )}
-                  <td className="nowrap muted">{dateLabel(o.date)}</td>
-                  <td>
-                    <span className={`badge ${s}`}>
-                      {s === 'paid' && o.kind === 'income' ? 'Recebido' : statusLabels[s]}
-                    </span>
-                  </td>
-                  <td className={`right nowrap amount ${o.kind === 'income' ? 'positive' : ''}`}>
-                    {o.kind === 'income' ? '+' : '−'} {f(due(w, o))}
-                  </td>
-                  <td>
-                    <div className="row-actions">
-                      <button
-                        className="icon-action"
-                        title="Detalhes da ocorrência"
-                        onClick={() => setDetail(o)}
-                      >
-                        <Eye size={15} />
-                      </button>
-                      {remaining(w, o) > 0 && (
+                    {!compact && (
+                      <td>
+                        <span className="category-pill">{o.category}</span>
+                      </td>
+                    )}
+                    <td className="nowrap muted">{dateLabel(o.date)}</td>
+                    <td>
+                      <span className={`badge ${s}`}>
+                        {s === 'paid' && o.kind === 'income' ? 'Recebido' : statusLabels[s]}
+                      </span>
+                    </td>
+                    <td className={`right nowrap amount ${o.kind === 'income' ? 'positive' : ''}`}>
+                      {o.kind === 'income' ? '+' : '−'} {f(due(w, o))}
+                    </td>
+                    <td>
+                      <div className="row-actions">
                         <button
                           className="icon-action"
-                          title={o.cardId ? 'Pagar pela fatura' : 'Registrar pagamento'}
-                          onClick={() =>
-                            o.cardId
-                              ? setInvoice({ card: o.cardId, month: monthOf(o.date) })
-                              : setPayment(o)
-                          }
+                          title="Detalhes da ocorrência"
+                          onClick={() => setDetailId(o.id)}
                         >
-                          <Check size={16} />
+                          <Eye size={15} />
                         </button>
-                      )}
-                      {!compact && (
-                        <button
-                          className="icon-action"
-                          title="Editar série"
-                          onClick={() => {
-                            const p = w.plans.find((p) => p.id === o.planId);
-                            if (p) editPlan(p);
-                          }}
-                        >
-                          <Pencil size={15} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                        {remaining(w, o) > 0 && (
+                          <button
+                            className="icon-action"
+                            title={o.cardId ? 'Pagar pela fatura' : 'Registrar pagamento'}
+                            onClick={() =>
+                              o.cardId
+                                ? setInvoice({ card: o.cardId, month: monthOf(o.date) })
+                                : setPayment(o)
+                            }
+                          >
+                            <Check size={16} />
+                          </button>
+                        )}
+                        {!compact && (
+                          <button
+                            className="icon-action"
+                            title={o.total > 1 ? 'Editar parcela' : 'Editar ocorrência'}
+                            onClick={() => setDetailId(o.id)}
+                          >
+                            <Pencil size={15} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
         {!compact && rows.length > listLimit && (
           <Button
             variant="ghost"
@@ -1240,8 +1254,8 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
               </Button>
             }
           >
-            <div className="filter-bar">
-              <div className="segmented compact">
+            <div className="filter-bar transaction-filters">
+              <div className="segmented compact desktop-status-filter">
                 {[
                   ['all', 'Todas'],
                   ['income', 'Receitas'],
@@ -1252,12 +1266,40 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                   <button
                     className={filter === value ? 'active' : ''}
                     key={value}
-                    onClick={() => setFilter(value)}
+                    onClick={() => {
+                      setFilter(value);
+                      if (['all', 'income', 'expense'].includes(value)) setTypeFilter('all');
+                    }}
                   >
                     {label}
                   </button>
                 ))}
               </div>
+              <select
+                aria-label="Filtrar tipo"
+                value={['income', 'expense'].includes(filter) ? filter : typeFilter}
+                onChange={(e) => {
+                  setTypeFilter(e.target.value);
+                  if (['income', 'expense'].includes(filter)) setFilter('all');
+                }}
+              >
+                <option value="all">Todos os tipos</option>
+                <option value="income">Receitas</option>
+                <option value="expense">Despesas</option>
+              </select>
+              <select
+                className="mobile-status-filter"
+                aria-label="Filtrar status"
+                value={['income', 'expense'].includes(filter) ? 'all' : filter}
+                onChange={(e) => setFilter(e.target.value)}
+              >
+                <option value="all">Todos os status</option>
+                <option value="pending">Pendentes</option>
+                <option value="partial">Parciais</option>
+                <option value="paid">Pagos</option>
+                <option value="overdue">Atrasados</option>
+                <option value="cancelled">Cancelados</option>
+              </select>
               <select
                 aria-label="Filtrar categoria"
                 value={categoryFilter}
@@ -1481,6 +1523,20 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                               : 'Cancelado'}
                           </p>
                           <progress value={done} max={p.count} />
+                          <div className="purchase-summary">
+                            <span>Total: {f(p.amount)}</span>
+                            <span>Pago: {f(rows.reduce((sum, o) => sum + paid(w, o.id), 0))}</span>
+                            <span>
+                              Próximo vencimento:{' '}
+                              {rows
+                                .filter((o) => remaining(w, o) > 0)
+                                .map((o) => o.date)
+                                .sort()[0]
+                                ?.split('-')
+                                .reverse()
+                                .join('/') ?? 'Quitado'}
+                            </span>
+                          </div>
                           <small>
                             Libera aproximadamente{' '}
                             {f(
@@ -1506,8 +1562,8 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                         </div>
                         <button
                           className="icon-action"
-                          title="Editar parcelamento"
-                          onClick={() => editPlan(p)}
+                          title="Editar parcelas"
+                          onClick={() => setPurchaseId(p.id)}
                         >
                           <Pencil size={16} />
                         </button>
@@ -1698,6 +1754,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                 (o) => o.date >= today() && o.date <= civil(addDays(parseISO(today()), 6)),
               )
             : monthRows;
+        const chronological = shown.slice().sort((a, b) => a.date.localeCompare(b.date));
         return (
           <Panel
             title={monthLabel(month)}
@@ -1737,6 +1794,12 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                       <button
                         key={d || `empty${i}`}
                         disabled={!d}
+                        aria-label={
+                          d
+                            ? `${d.split('-').reverse().join('/')} · ${rows.length} compromisso(s)`
+                            : undefined
+                        }
+                        aria-pressed={!!d && d === selectedDay}
                         className={`${d === today() ? 'today' : ''} ${d === selectedDay ? 'selected' : ''}`}
                         onClick={() => setSelectedDay(d)}
                       >
@@ -1765,7 +1828,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                 </button>
               </div>
             )}
-            {transactionTable(shown)}
+            {transactionTable(chronological)}
           </Panel>
         );
       }
@@ -2437,7 +2500,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                             className="text-button"
                             onClick={() => {
                               const o = w.obligations.find((o) => o.id === r.targetId);
-                              if (o) setDetail(o);
+                              if (o) setDetailId(o.id);
                               else go('journal');
                             }}
                           >
@@ -3071,15 +3134,8 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
     subscriptions: 'Nova assinatura',
   };
   return (
-    <div className={`app ${mobile ? 'mobile-open' : ''}`}>
+    <div className="app">
       <Toaster position="bottom-right" theme={dark ? 'dark' : 'light'} richColors />
-      {mobile && (
-        <button
-          className="sidebar-scrim"
-          aria-label="Fechar navegação"
-          onClick={() => setMobile(false)}
-        />
-      )}
       <aside className="sidebar">
         <button
           className="brand"
@@ -3168,26 +3224,26 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
             <ChevronRight size={13} />
             <strong>{nav.find((n) => n.id === page)?.label || titles[page]?.[0]}</strong>
           </div>
+          <div className="global-search">
+            <Search size={16} />
+            <input
+              ref={searchRef}
+              placeholder="Buscar no mês selecionado…"
+              aria-label="Buscar movimentações"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                if (e.target.value) go('transactions');
+              }}
+            />
+            <kbd>⌘ K</kbd>
+            {search && (
+              <button aria-label="Limpar busca" onClick={() => setSearch('')}>
+                <X size={13} />
+              </button>
+            )}
+          </div>
           <div className="topbar-actions">
-            <div className="global-search">
-              <Search size={16} />
-              <input
-                ref={searchRef}
-                placeholder="Buscar movimentações…"
-                aria-label="Buscar movimentações"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  if (e.target.value) go('transactions');
-                }}
-              />
-              <kbd>⌘ K</kbd>
-              {search && (
-                <button aria-label="Limpar busca" onClick={() => setSearch('')}>
-                  <X size={13} />
-                </button>
-              )}
-            </div>
             <button
               className="icon-action"
               onClick={() => setHidden(!hidden)}
@@ -3328,6 +3384,45 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
         commit={commit}
         busy={busy}
       />
+      <Button
+        className="mobile-quick-add"
+        aria-label="Nova movimentação rápida"
+        onClick={() => newEntry()}
+        disabled={busy || !ready || !!loadError}
+      >
+        <Plus size={24} />
+      </Button>
+      <MobileNavigation
+        page={page}
+        menuOpen={mobile}
+        onNavigate={go}
+        onMenu={() => setMobile(true)}
+      />
+      <Modal
+        open={mobile}
+        onOpenChange={setMobile}
+        title="Menu do Gevyro"
+        description="Todas as suas ferramentas financeiras."
+        className="mobile-navigation-sheet"
+      >
+        <nav className="mobile-menu-grid" aria-label="Todas as páginas">
+          {[
+            ...nav,
+            { id: 'settings', label: 'Configurações', icon: Settings2 },
+            { id: 'help', label: 'Central de ajuda', icon: CircleHelp },
+          ].map((item) => (
+            <button
+              key={item.id}
+              aria-label={`Abrir ${item.label}`}
+              aria-current={page === item.id ? 'page' : undefined}
+              onClick={() => go(item.id)}
+            >
+              <item.icon size={21} />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+      </Modal>
       <PurchaseDialog
         key={purchaseId}
         w={w}
@@ -3336,15 +3431,15 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
         busy={busy}
         commit={commit}
         onClose={() => setPurchaseId('')}
-        onDetail={setDetail}
+        onDetail={(o) => setDetailId(o.id)}
       />
       <Modal
         open={!!detail}
         onOpenChange={(open) => {
-          if (!open) setDetail(null);
+          if (!open) setDetailId(null);
         }}
         title={detail?.name || 'Detalhes'}
-        description="Ocorrência individual e histórico de liquidação."
+        description="Edite somente esta parcela. O vencimento salvo atualiza também o calendário e as movimentações."
       >
         {detail && (
           <div className="stack">
@@ -3372,11 +3467,12 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                 'Sem observações.'}
             </p>
             <OccurrenceControl
+              key={detail.id}
               w={w}
               o={detail}
               busy={busy}
               commit={commit}
-              onClose={() => setDetail(null)}
+              onClose={() => setDetailId(null)}
             />
             {w.payments
               .filter((p) => p.obligationId === detail.id)
@@ -3396,7 +3492,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                           run: async () => {
                             await commit(reversePayment(w, p.id), 'Pagamento estornado');
                             setConfirm(null);
-                            setDetail(null);
+                            setDetailId(null);
                           },
                         })
                       }
@@ -3412,6 +3508,18 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                 onClick={() => {
                   const p = w.plans.find((p) => p.id === detail.planId);
                   if (p) {
+                    setDetailId(null);
+                    editPlan(p);
+                  }
+                }}
+              >
+                Editar série futura
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const p = w.plans.find((p) => p.id === detail.planId);
+                  if (p) {
                     setEditing({
                       ...p,
                       id: uid(),
@@ -3420,7 +3528,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                       count: 1,
                       date: today(),
                     });
-                    setDetail(null);
+                    setDetailId(null);
                     setEntryOpen(true);
                   }
                 }}
@@ -3432,7 +3540,7 @@ function FinanceWorkspace({ accountUser }: { accountUser: User }) {
                 onClick={() => {
                   const p = w.plans.find((p) => p.id === detail.planId);
                   if (p) {
-                    setDetail(null);
+                    setDetailId(null);
                     requestCancel(p);
                   }
                 }}

@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { repositoryFiles } from './repository-files.mjs';
 const findings = [];
@@ -51,6 +51,14 @@ assert.equal(config.outputDirectory, 'out');
 const sw = readFileSync('public/sw.js', 'utf8');
 assert.match(sw, /url\.pathname !== '\/icon-192\.png'/);
 if (existsSync('out')) {
+  for (const file of readdirSync('out', { recursive: true }).filter((file) =>
+    /\.(?:js|html)$/.test(String(file)),
+  ))
+    assert.doesNotMatch(
+      readFileSync('out/' + file, 'utf8'),
+      /responsive-test-user|gevyro-memory-rpc|\/__test\/rpc/,
+      'O ambiente de teste não pode entrar no build público.',
+    );
   for (const name of ['.env', '.env.local', '.git/config']) assert.ok(!existsSync('out/' + name));
 }
 console.log(

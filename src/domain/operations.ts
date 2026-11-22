@@ -51,7 +51,10 @@ export function revisePlan(w: Workspace, plan: Plan, now = today()): Workspace {
       o.planId === plan.id &&
       (w.payments.some((p) => p.obligationId === o.id) ||
         w.events.some((e) => e.targetId === o.id) ||
-        o.date < now),
+        o.date < now ||
+        o.originalDate !== undefined ||
+        o.originalAmount !== undefined ||
+        o.notes !== undefined),
   );
   if (
     protectedRows.length &&

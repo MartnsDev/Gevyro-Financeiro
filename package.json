@@ -15,7 +15,8 @@
     "check:costs": "node scripts/check-cost-policy.mjs",
     "test:db:shared": "bash scripts/test-shared-db.sh",
     "check:security": "node scripts/check-security.mjs",
-    "test:db:isolated": "bash scripts/test-gevyro-db.sh"
+    "test:db:isolated": "bash scripts/test-gevyro-db.sh",
+    "test:responsive": "playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.8",
@@ -39,6 +40,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.1",
     "@tailwindcss/postcss": "^4.3.5",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
@@ -53,6 +55,7 @@
     "prettier": "^3.10.1",
     "tailwindcss": "^4.3.5",
     "typescript": "^6.0.3",
+    "vite": "8.3.8",
     "vitest": "^4.1.12"
   },
   "type": "module"

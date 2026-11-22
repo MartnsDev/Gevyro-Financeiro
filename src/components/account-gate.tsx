@@ -1,13 +1,11 @@
 'use client';
 import { useEffect, useState, type ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { Cloud, LoaderCircle, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { isGoogleUser, signInWithGoogle } from '@/lib/google-auth';
 import { readLegacyWorkspace } from '@/lib/legacy-storage';
 import { backupJSON } from '@/lib/backup';
-import { GevyroLogo } from './gevyro-logo';
-import { Button } from './ui/button';
+import { LoginScreen } from './login-screen';
 export function AccountGate({ children }: { children: (user: User) => ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(!!supabase);
@@ -93,70 +91,24 @@ export function AccountGate({ children }: { children: (user: User) => ReactNode 
     }
   }
   return (
-    <main className="account-gate">
-      <section className="account-card">
-        <GevyroLogo />
-        <p className="eyebrow">GEVYRO FINANÇAS</p>
-        <h1>Seu dinheiro, com você em todos os dispositivos.</h1>
-        <p>
-          Entre com a mesma conta Google no computador ou no celular para acessar suas informações.
-        </p>
-        <div className="notice">
-          <Cloud size={22} />
-          <span>
-            Seus registros financeiros serão salvos somente no Supabase. O aplicativo não mantém uma
-            cópia financeira neste dispositivo.
-          </span>
-        </div>
-        {loading ? (
-          <p role="status">
-            <LoaderCircle className="spin" /> Verificando sua conta…
-          </p>
-        ) : supabase ? (
-          <Button
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              setError('');
-              try {
-                await signInWithGoogle(supabase!, window.location.origin);
-              } catch (e) {
-                setError(e instanceof Error ? e.message : 'Não foi possível entrar.');
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <ShieldCheck size={18} />
-            Entrar com Google
-          </Button>
-        ) : (
-          <div className="stack">
-            <p role="status">
-              A configuração do acesso à nuvem ainda está pendente. Novos registros estão
-              indisponíveis até a ativação.
-            </p>
-            <Button variant="outline" onClick={() => window.location.reload()}>
-              Verificar novamente
-            </Button>
-          </div>
-        )}
-        {error && <p role="alert">{error}</p>}
-        <details>
-          <summary>Usava uma versão anterior neste navegador?</summary>
-          <p>
-            Exporte uma cópia dos registros antigos antes da migração. Essa recuperação não cria
-            novos registros locais.
-          </p>
-          <Button variant="outline" disabled={busy} onClick={() => void recover()}>
-            Recuperar backup anterior
-          </Button>
-        </details>
-        <small>
-          A sessão de acesso pode ser mantida pelo provedor neste navegador. Os dados financeiros
-          ficam na sua conta.
-        </small>
-      </section>
-    </main>
+    <LoginScreen
+      loading={loading}
+      busy={busy}
+      available={!!supabase}
+      error={error}
+      onReload={() => window.location.reload()}
+      onRecover={recover}
+      onGoogle={async () => {
+        setBusy(true);
+        setError('');
+        try {
+          await signInWithGoogle(supabase!, window.location.origin);
+        } catch (e) {
+          setError(e instanceof Error ? e.message : 'Não foi possível entrar.');
+        } finally {
+          setBusy(false);
+        }
+      }}
+    />
   );
 }

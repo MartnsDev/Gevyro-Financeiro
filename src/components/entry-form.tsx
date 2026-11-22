@@ -66,8 +66,18 @@ export function EntryEditor({
       className="form"
       onSubmit={handleSubmit(async (v) => {
         try {
-          const amount = cents(v.amount);
-          if (amount <= 0) throw new Error('Informe um valor maior que zero.');
+          let amount: number;
+          try {
+            amount = cents(v.amount);
+            if (amount <= 0) throw new Error('Informe um valor maior que zero.');
+          } catch (error) {
+            setError(
+              'amount',
+              { message: error instanceof Error ? error.message : 'Informe um valor válido.' },
+              { shouldFocus: true },
+            );
+            return;
+          }
           if (!v.cardId && !v.accountId) throw new Error('Cadastre ou selecione uma conta.');
           await onSave(
             {
@@ -131,8 +141,20 @@ export function EntryEditor({
       </label>
       <div className="form-grid">
         <label>
-          Valor {mode === 'installment' ? 'total' : '(R$)'}
-          <input inputMode="decimal" placeholder="0,00" {...register('amount')} />
+          Valor {mode === 'installment' ? 'total (R$)' : '(R$)'}
+          <input
+            inputMode="decimal"
+            aria-label={mode === 'installment' ? 'Valor total (R$)' : 'Valor (R$)'}
+            aria-invalid={!!errors.amount}
+            aria-describedby={errors.amount ? 'entry-amount-error' : undefined}
+            placeholder="0,00"
+            {...register('amount')}
+          />
+          {errors.amount && (
+            <span className="error" id="entry-amount-error" role="alert">
+              {errors.amount.message}
+            </span>
+          )}
         </label>
         <label>
           Categoria
@@ -245,8 +267,9 @@ export function EntryEditor({
       )}
       {initial && (
         <div className="notice">
-          <CircleAlert size={16} /> A edição aplica-se às ocorrências futuras ainda não pagas. O
-          histórico liquidado é preservado.
+          <CircleAlert size={16} /> Você está editando a série futura. Parcelas vencidas, com
+          pagamentos ou editadas individualmente são preservadas. Para mudar um vencimento
+          específico, use “Editar parcela” na movimentação.
         </div>
       )}
       {errors.root && (
@@ -255,7 +278,7 @@ export function EntryEditor({
         </p>
       )}
       {Object.entries(errors)
-        .filter(([key]) => !['root', 'name'].includes(key))
+        .filter(([key]) => !['root', 'name', 'amount'].includes(key))
         .map(([key, e]) => (
           <p className="error" key={key}>
             {key}: {e?.message}

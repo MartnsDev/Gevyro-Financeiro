@@ -24,6 +24,6 @@ if ! "$gevyro_bin/psql" -h "$gevyro_tmp" -p 55438 -d postgres -v ON_ERROR_STOP=1
  -f "$gevyro_tmp/rls.sql" -f "$gevyro_root/supabase/tests/events.integration.sql" \
  -f "$gevyro_root/supabase/migrations/202611220003_google_access.sql" \
  -f "$gevyro_root/supabase/migrations/20261122180826_gevyro_private_rpc.sql" \
- -f "$gevyro_root/supabase/migrations/20261122185409_gevyro_linked_google_sessions.sql" -f "$gevyro_root/supabase/migrations/20261122195625_gevyro_financial_control.sql" -f "$gevyro_root/supabase/tests/google.integration.sql" -f "$gevyro_root/supabase/tests/financial-control.integration.sql" >"$gevyro_tmp/results.log" 2>&1; then tail -80 "$gevyro_tmp/results.log"; exit 1; fi
+ -f "$gevyro_root/supabase/migrations/20261122185409_gevyro_linked_google_sessions.sql" -f "$gevyro_root/supabase/migrations/20261122195625_gevyro_financial_control.sql" -f "$gevyro_root/supabase/tests/google.integration.sql" -f "$gevyro_root/supabase/tests/financial-control.integration.sql" -f "$gevyro_root/supabase/tests/rescheduling.integration.sql" >"$gevyro_tmp/results.log" 2>&1; then tail -80 "$gevyro_tmp/results.log"; exit 1; fi
 sed -n '/PASS:/p' "$gevyro_tmp/results.log"
 echo 'PASS: isolated Gevyro migrations, atomicity, history, Google-only authorization and RLS.'
