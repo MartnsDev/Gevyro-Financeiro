@@ -31,6 +31,7 @@ export function repositoryFiles() {
       const relative = path.startsWith(process.cwd() + '/')
         ? path.slice(process.cwd().length + 1)
         : path;
+      if (/(^|\/)(\.temp|\.branches|\.cache)(\/|$)/.test(relative)) continue;
       if (
         /(^|\/)(\.env(?:\..*)?|node_modules|\.git|\.next|\.vercel|out|coverage)(\/|$)/.test(
           relative,

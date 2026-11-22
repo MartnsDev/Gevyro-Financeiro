@@ -28,4 +28,4 @@ O orçamento adicional autorizado continua R$ 0,00. Não foram contratados novos
 
 ## Ativação real pendente
 
-As variáveis públicas estão configuradas na Vercel. Porém, o projeto MCell ainda não concedeu acesso administrativo à conexão disponível; a função Gevyro está ausente e Google está desativado. A tela financeira fica bloqueada até concluir a configuração. Não se anuncia uma conexão ativa só porque existe uma URL/chave.
+As variáveis públicas estão configuradas na Vercel. As tabelas, políticas e funções Gevyro já foram instaladas e verificadas no MCell pela CLI autorizada. O Google continua desativado e a confirmação do plano Free está pendente. A tela financeira fica bloqueada até concluir a configuração. Não se anuncia uma conexão ativa só porque existe uma URL/chave.

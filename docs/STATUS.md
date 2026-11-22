@@ -1,5 +1,7 @@
 # Estado atual — somente Supabase
 
+> **Atualização remota:** o acesso pela CLI foi autorizado e as tabelas/RLS/RPCs Gevyro já foram instaladas e verificadas no MCell. A correção adicional dos RPCs privados também foi aplicada. O redirect Vercel está autorizado. Faltam habilitar Google, confirmar o plano Free e homologar o login antes de liberar a nuvem no app. Consulte [relatório da instalação](RELATORIO-SUPABASE.md). As menções a acesso recusado e migrations ausentes abaixo são registros anteriores à instalação.
+
 A versão atual exige conta Google, não grava novos dados financeiros em IndexedDB/localStorage e não oferece fallback local. Sincronização entre dispositivos usa a mesma conta, consulta a cada 30 segundos com a tela visível e revisão otimista para impedir sobrescritas. O histórico antigo só é removido depois de migração conferida.
 
 A Vercel está publicada em https://gevyro-financeiro.vercel.app, com variáveis públicas configuradas. O acesso administrativo ao projeto MCell continua recusado; a migração e o Google ainda não foram ativados. A nova versão bloqueia a tela financeira enquanto essa pendência existir. Não considerar a nuvem homologada.

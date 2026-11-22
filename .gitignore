@@ -12,3 +12,5 @@ coverage/
 *.p12
 *.pfx
 *.log
+supabase/.temp/
+supabase/.branches/

@@ -1,4 +1,5 @@
 <p align="center">
+
   <img src="public/brand/gevyro-mark.png" alt="Logo Gevyro" width="88" />
 </p>
 
@@ -73,6 +74,8 @@ Se você usava a versão anterior, é possível recuperar um backup do históric
 O Gevyro é um organizador financeiro pessoal. Cotações, valores patrimoniais e dívidas são informados manualmente; não há conexão bancária automática, recomendação de investimento ou promessa de rentabilidade.
 
 ## Estado desta edição
+
+> **Atualização remota:** o acesso pela CLI foi autorizado e as tabelas/RLS/RPCs Gevyro já foram instaladas e verificadas no MCell. A correção adicional dos RPCs privados também foi aplicada. O redirect Vercel está autorizado. Faltam habilitar Google, confirmar o plano Free e homologar o login antes de liberar a nuvem no app. Consulte [relatório da instalação](docs/RELATORIO-SUPABASE.md). As menções a acesso recusado e migrations ausentes abaixo são registros anteriores à instalação.
 
 Os fluxos financeiros essenciais estão implementados com persistência exclusiva na nuvem, condicionada à ativação do projeto real. A publicação na Vercel e o login Google no projeto real exigem as conexões administrativas e a validação descritas no [checklist de entrega](docs/CHECKLIST-ENTREGA.md). Os limites funcionais estão na [verificação funcional](docs/VERIFICACAO-FUNCIONAL.md).
 

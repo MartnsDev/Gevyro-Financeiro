@@ -24,7 +24,7 @@ A trava `deploymentVerified: false` em `src/lib/shared-supabase.ts` permanece at
 ## Supabase compartilhado
 
 1. Confirme projeto `bcfjhwcsulylodayczkr`, plano Free e escopo MCell. Inspecione estrutura e faça backup operacional sem publicar dados reais.
-2. Aplique, em ordem, somente `202611220001_shared_mcell.sql`, `202611220002_financial_events.sql` e `202611220003_google_access.sql`. Se uma já estiver instalada, valide a versão antes de prosseguir. Não execute a migration standalone `202611200001_financial_workspace.sql` nem `supabase db push` indiscriminado.
+2. Aplique, em ordem, somente `202611220001_shared_mcell.sql`, `202611220002_financial_events.sql` , `202611220003_google_access.sql` e `20261122180826_gevyro_private_rpc.sql`. Se uma já estiver instalada, valide a versão antes de prosseguir. Não execute a migration standalone `202611200001_financial_workspace.sql` nem `supabase db push` indiscriminado.
 3. Mantenha `gevyro_finance` fora dos schemas expostos pela Data API. São necessários apenas os dois RPCs públicos prefixados Gevyro. Não crie executor SQL genérico.
 4. Habilite Google OAuth com as credenciais próprias no painel Supabase. O Google Client Secret fica no provedor. No Google Cloud, a URI de retorno é a URI `/auth/v1/callback` informada pelo Supabase; siga a tela do projeto confirmado. Não desabilite nem substitua provedores usados pelo MCell.
 5. Acrescente apenas a origem HTTPS definitiva do Gevyro, com `/` final, aos redirects autorizados do Supabase. Preserve os redirects e a Site URL do MCell. Evite curingas amplos e não libere indiscriminadamente todas as previews Vercel.
@@ -53,3 +53,7 @@ RLS protege dados de outros usuários e acessos anônimos; não retira privilég
 ## Persistência exclusiva por conta
 
 A nova edição exige Google, remove o fallback IndexedDB e atualiza os dados a cada 30 segundos com a tela visível e ao retomar conexão/janela. A sessão pode persistir pelo SDK, mas registros financeiros não são armazenados no dispositivo. Recuperação do histórico anterior é somente explícita; exclusão ocorre apenas após conferência na nuvem. Nenhuma migração local pode substituir um espaço remoto existente.
+
+## Instalação realizada
+
+As quatro migrations acima já foram aplicadas no projeto real em 22/11/2026. Não execute novamente sobre a instalação existente. Veja [RELATORIO-SUPABASE.md](RELATORIO-SUPABASE.md) para a validação, o redirect autorizado e as pendências Google/plano.

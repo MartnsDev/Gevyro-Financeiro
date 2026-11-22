@@ -1,5 +1,7 @@
 # Atualização: dados somente no Supabase
 
+> **Atualização remota:** o acesso pela CLI foi autorizado e as tabelas/RLS/RPCs Gevyro já foram instaladas e verificadas no MCell. A correção adicional dos RPCs privados também foi aplicada. O redirect Vercel está autorizado. Faltam habilitar Google, confirmar o plano Free e homologar o login antes de liberar a nuvem no app. Consulte [relatório da instalação](RELATORIO-SUPABASE.md). As menções a acesso recusado e migrations ausentes abaixo são registros anteriores à instalação.
+
 - Login Google obrigatório; sem acesso financeiro anônimo ou modo local.
 - Leitura/gravação via RPC, validação da sessão e revisão otimista entre dispositivos.
 - Atualização automática a cada 30 segundos em primeiro plano e ao retomar conexão/janela, pausada durante formulários.

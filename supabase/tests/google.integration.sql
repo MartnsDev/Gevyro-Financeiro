@@ -1,4 +1,9 @@
 begin;
+do $$ begin
+ if exists(select 1 from pg_proc where oid in ('public.gevyro_load_workspace()'::regprocedure,'public.gevyro_save_workspace(jsonb,bigint)'::regprocedure) and prosecdef) then raise exception 'FAIL exposed privileged RPC';end if;
+ if (select count(*) from pg_proc where oid in ('gevyro_finance.gevyro_load_workspace()'::regprocedure,'gevyro_finance.gevyro_save_workspace(jsonb,bigint)'::regprocedure) and prosecdef)<>2 then raise exception 'FAIL private RPC implementations';end if;
+ if has_function_privilege('anon','gevyro_finance.gevyro_load_workspace()','execute') then raise exception 'FAIL anonymous private RPC';end if;
+end $$;
 insert into auth.users(id) values('55555555-5555-4555-8555-555555555555'),('66666666-6666-4666-8666-666666666666');
 set local role authenticated;
 set local request.jwt.claim.sub='55555555-5555-4555-8555-555555555555';
